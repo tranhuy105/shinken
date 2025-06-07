@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import express from "express";
 import fs from "fs";
 import path from "path";
+import adminRoutes from "./routes/adminRoutes";
 import settingsInstance from "./services/settingsInstance";
 
 // Load environment variables
@@ -29,6 +30,12 @@ const client = new Client({
 // Initialize Express for potential web interface
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, "../public")));
+
+// Setup routes
+app.use("/admin", adminRoutes);
 
 // Setup command collection
 client.commands = new Collection();
@@ -194,6 +201,9 @@ app.get("/", (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(
+        `Admin dashboard available at: http://localhost:${PORT}/admin`
+    );
 });
 
 // Login to Discord

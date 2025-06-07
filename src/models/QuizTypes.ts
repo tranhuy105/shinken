@@ -5,6 +5,24 @@ export interface VocabularyItem {
     japanese: string;
     reading: string;
     meaning: string;
+    sinoVietnamese?: string; // "âm hán việt" - optional field
+}
+
+/**
+ * Interface for field validation results
+ */
+export interface ValidationError {
+    field: string;
+    message: string;
+    index?: number;
+}
+
+/**
+ * Interface for validation results
+ */
+export interface ValidationResult {
+    valid: boolean;
+    errors: ValidationError[];
 }
 
 /**

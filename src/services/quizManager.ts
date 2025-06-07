@@ -1,4 +1,3 @@
-import csv from "csv-parser";
 import {
     APIEmbedField,
     ColorResolvable,
@@ -11,13 +10,8 @@ import {
     ThreadChannel,
 } from "discord.js";
 import { EventEmitter } from "events";
-import fs from "fs";
-import path from "path";
-import {
-    DeckInfo,
-    QuizQuestion,
-    VocabularyItem,
-} from "../models/QuizTypes";
+import { QuizQuestion } from "../models/QuizTypes";
+import deckManagerInstance from "./deckManagerInstance";
 import { JapaneseTextConverter } from "./JapaneseTextConverter";
 import { LlmService } from "./llmService";
 import { QuizGenerator } from "./QuizGenerator";
@@ -32,191 +26,27 @@ import {
  * Class to manage Japanese quiz sessions
  */
 export class JapaneseQuizManager {
-    private decks: DeckInfo[];
-    private deckMap: Map<string, VocabularyItem[]>;
     private sessionMap: Map<string, QuizSession>;
     private llmService: LlmService;
     private quizGenerator: QuizGenerator;
     private textConverter: JapaneseTextConverter;
-    private pathSettings: any;
 
     constructor() {
-        this.decks = [];
-        this.deckMap = new Map();
         this.sessionMap = new Map();
         this.llmService = new LlmService();
         this.quizGenerator = new QuizGenerator();
         this.textConverter = new JapaneseTextConverter();
-        this.pathSettings =
-            settingsInstance.getPathSettings();
 
         console.log(
             "[QuizManager] Initializing quiz manager"
         );
-
-        // Load deck information
-        this.loadDecks();
-    }
-
-    /**
-     * Load deck information from JSON and CSV files
-     */
-    private async loadDecks(): Promise<void> {
-        try {
-            // Create data directory if it doesn't exist
-            const dataDir = this.pathSettings.dataDir;
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
-                console.log(
-                    `[QuizManager] Created data directory: ${dataDir}`
-                );
-            }
-
-            const deckConfigPath = path.join(
-                dataDir,
-                this.pathSettings.decksFile
-            );
-
-            // Create default deck config if it doesn't exist
-            if (!fs.existsSync(deckConfigPath)) {
-                console.log(
-                    `[QuizManager] Creating default deck config at ${deckConfigPath}`
-                );
-                const defaultConfig = {
-                    decks: [
-                        {
-                            name: "default",
-                            description:
-                                "Bộ từ tiếng Nhật mặc định",
-                            filename: "default.csv",
-                        },
-                    ],
-                };
-                fs.writeFileSync(
-                    deckConfigPath,
-                    JSON.stringify(defaultConfig, null, 2)
-                );
-
-                // Also create a sample default deck
-                const defaultDeckPath = path.join(
-                    dataDir,
-                    "default.csv"
-                );
-                if (!fs.existsSync(defaultDeckPath)) {
-                    console.log(
-                        `[QuizManager] Creating default deck at ${defaultDeckPath}`
-                    );
-                    const sampleData =
-                        "japanese,reading,meaning\n" +
-                        "本,ほん,sách\n" +
-                        "水,みず,nước\n" +
-                        "人,ひと,người\n" +
-                        "山,やま,núi\n" +
-                        "川,かわ,sông";
-                    fs.writeFileSync(
-                        defaultDeckPath,
-                        sampleData
-                    );
-                }
-            }
-
-            // Load deck configuration
-            console.log(
-                `[QuizManager] Loading deck configuration from ${deckConfigPath}`
-            );
-            const deckConfig = JSON.parse(
-                fs.readFileSync(deckConfigPath, "utf-8")
-            );
-            this.decks = deckConfig.decks || [];
-
-            // Load each deck
-            for (const deck of this.decks) {
-                await this.loadDeck(
-                    deck.name,
-                    deck.filename
-                );
-            }
-
-            console.log(
-                `[QuizManager] Loaded ${this.decks.length} decks`
-            );
-        } catch (error) {
-            console.error(
-                "[QuizManager] Error loading decks:",
-                error
-            );
-        }
-    }
-
-    /**
-     * Load a specific deck from CSV file
-     */
-    private loadDeck(
-        name: string,
-        filename: string
-    ): Promise<void> {
-        console.log(
-            `[QuizManager] Loading deck: ${name} from ${filename}`
-        );
-        return new Promise((resolve, reject) => {
-            const deckPath = path.join(
-                this.pathSettings.dataDir,
-                filename
-            );
-            const items: VocabularyItem[] = [];
-
-            if (!fs.existsSync(deckPath)) {
-                console.warn(
-                    `[QuizManager] Deck file not found: ${deckPath}`
-                );
-                this.deckMap.set(name, []);
-                resolve();
-                return;
-            }
-
-            fs.createReadStream(deckPath)
-                .pipe(csv())
-                .on("data", (data: any) => {
-                    // Ensure the data has the required fields
-                    if (
-                        data.japanese &&
-                        data.reading &&
-                        data.meaning
-                    ) {
-                        items.push({
-                            japanese: data.japanese,
-                            reading: data.reading,
-                            meaning: data.meaning,
-                        });
-                    }
-                })
-                .on("end", () => {
-                    this.deckMap.set(name, items);
-                    console.log(
-                        `[QuizManager] Loaded ${items.length} items from deck ${name}`
-                    );
-                    resolve();
-                })
-                .on("error", (error) => {
-                    console.error(
-                        `[QuizManager] Error loading deck ${name}:`,
-                        error
-                    );
-                    reject(error);
-                });
-        });
     }
 
     /**
      * List all available decks
      */
     public listAvailableDecks(): string[] {
-        console.log(
-            `[QuizManager] Listing available decks (total: ${this.decks.length})`
-        );
-        return this.decks.map(
-            (deck) => `${deck.name}: ${deck.description}`
-        );
+        return deckManagerInstance.listAvailableDecks();
     }
 
     /**
@@ -270,7 +100,7 @@ export class JapaneseQuizManager {
         );
         try {
             // Check if deck exists
-            if (!this.deckMap.has(deckName)) {
+            if (!deckManagerInstance.deckExists(deckName)) {
                 console.log(
                     `[QuizManager] Deck not found: ${deckName}`
                 );
@@ -289,7 +119,8 @@ export class JapaneseQuizManager {
             }
 
             // Get deck items
-            const deck = this.deckMap.get(deckName) || [];
+            const deck =
+                deckManagerInstance.getDeckItems(deckName);
             if (deck.length === 0) {
                 console.log(
                     `[QuizManager] Deck is empty: ${deckName}`
@@ -345,26 +176,6 @@ export class JapaneseQuizManager {
                 endIndex >= deck.length ||
                 startIndex > endIndex
             ) {
-                // console.log(
-                //     `[QuizManager] Invalid range: ${
-                //         startIndex + 1
-                //     }-${endIndex + 1} for deck with ${
-                //         deck.length
-                //     } items`
-                // );
-                // const errorEmbed = new EmbedBuilder()
-                //     .setColor("#ff0000" as ColorResolvable)
-                //     .setTitle("❌ Lỗi")
-                //     .setDescription(
-                //         `Phạm vi không hợp lệ. Bộ thẻ có ${deck.length} từ.`
-                //     )
-                //     .setTimestamp();
-
-                // await message.reply({
-                //     embeds: [errorEmbed],
-                // });
-                // return;
-
                 startIndex = Math.max(0, startIndex);
                 endIndex = Math.min(
                     deck.length - 1,

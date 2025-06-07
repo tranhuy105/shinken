@@ -50,7 +50,7 @@ quiz:
 
 # File paths and directories
 paths:
-    dataDir: "./src/data"
+    dataDir: "./src/data/decks"
     configDir: "./src/config"
     decksFile: "decks.json"
-    persistenceDir: "./src/data"
+    persistenceDir: "./src/data/persistence"
