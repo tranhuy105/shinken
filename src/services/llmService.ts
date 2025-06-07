@@ -687,7 +687,8 @@ export class LlmService {
         question: string,
         userAnswer: string,
         correctAnswer: string,
-        isReading: boolean
+        isReading: boolean,
+        sinoVietnamese?: string
     ): Promise<EvaluationResult> {
         console.log(
             `[LLM] Evaluating answer for question: ${question}`
@@ -695,6 +696,11 @@ export class LlmService {
         console.log(
             `[LLM] User: "${userAnswer}" vs Correct: "${correctAnswer}"`
         );
+        if (sinoVietnamese) {
+            console.log(
+                `[LLM] Sino-Vietnamese reading: "${sinoVietnamese}"`
+            );
+        }
 
         // Sanitize inputs
         const sanitizedUserAnswer = (
@@ -704,6 +710,9 @@ export class LlmService {
             correctAnswer || ""
         ).trim();
         const sanitizedQuestion = (question || "").trim();
+        const sanitizedSinoVietnamese = (
+            sinoVietnamese || ""
+        ).trim();
 
         if (!sanitizedQuestion) {
             throw new Error("Question cannot be empty");
@@ -733,7 +742,8 @@ export class LlmService {
             return await this.evaluateWithLLM(
                 sanitizedQuestion,
                 sanitizedUserAnswer,
-                sanitizedCorrectAnswer
+                sanitizedCorrectAnswer,
+                sanitizedSinoVietnamese
             );
         } catch (error) {
             console.error(
@@ -776,7 +786,8 @@ export class LlmService {
     private async evaluateWithLLM(
         question: string,
         userAnswer: string,
-        correctAnswer: string
+        correctAnswer: string,
+        sinoVietnamese?: string
     ): Promise<EvaluationResult> {
         const system = `You are an expert Japanese language teacher and evaluator for a Japanese language learning platform. Your task is to assess user answers for Japanese vocabulary questions with high accuracy and provide educational feedback.
 
@@ -792,6 +803,7 @@ EVALUATION GUIDELINES:
    - For correct answers: Affirm correctness and provide additional context or nuance when relevant.
    - For incorrect answers: Explain the error specifically, compare with the correct answer, and offer learning tips.
    - If possible always provide an example sentence and synonyms of the correct answer in JAPANESE regardless of the language of the correct answer. Provide the example sentence, synonyms along with the explanation.
+   - When Sino-Vietnamese readings are provided, incorporate this information in your explanation to help students understand the connection between Japanese kanji and Vietnamese vocabulary.
 
 3. RESPONSE FORMAT:
    - Always respond with valid JSON in this format:
@@ -807,19 +819,36 @@ For correct synonym: {"isCorrect": true, "explanation": "Đúng! 'Ngôi nhà' l�
 For partially correct: {"isCorrect": true, "explanation": "Đúng về nghĩa cơ bản! Tuy nhiên, '元気' còn có thể hiểu sâu hơn là 'khỏe mạnh, tràn đầy sức sống' chứ không chỉ đơn thuần là 'khỏe'.", "confidence": 0.85}
 For incorrect: {"isCorrect": false, "explanation": "Chưa chính xác. '図書館' (toshokan) có nghĩa là 'thư viện', không phải 'nhà sách'. Nhà sách trong tiếng Nhật là '本屋' (honya).", "confidence": 0.98}`;
 
-        const prompt = `Evaluate the following Japanese vocabulary question and answer:
+        // Create prompt with optional sinoVietnamese field
+        let promptText = `Evaluate the following Japanese vocabulary question and answer:
 
 QUESTION/WORD: ${question}
 USER'S ANSWER: "${userAnswer}"
-CORRECT ANSWER: "${correctAnswer}"
+CORRECT ANSWER: "${correctAnswer}"`;
 
-Evaluate whether the user's answer correctly captures the meaning of the Japanese word or phrase. Consider synonyms, alternative expressions, and contextual equivalents. Provide detailed feedback in Vietnamese.
+        // Add sino-vietnamese reading if available
+        if (
+            sinoVietnamese &&
+            sinoVietnamese.trim() !== ""
+        ) {
+            promptText += `\nSINO-VIETNAMESE READING: "${sinoVietnamese}"`;
+        }
 
-Your response must be valid JSON with this structure:
+        promptText += `\n\nEvaluate whether the user's answer correctly captures the meaning of the Japanese word or phrase. Consider synonyms, alternative expressions, and contextual equivalents. Provide detailed feedback in Vietnamese.`;
+
+        // If sino-vietnamese is available, add special instruction
+        if (
+            sinoVietnamese &&
+            sinoVietnamese.trim() !== ""
+        ) {
+            promptText += `\nIncorporate the Sino-Vietnamese reading in your explanation to help connect Japanese kanji with Vietnamese vocabulary.`;
+        }
+
+        promptText += `\n\nYour response must be valid JSON with this structure:
 {"isCorrect": boolean, "explanation": "detailed feedback in Vietnamese", "confidence": number from 0.0 to 1.0}`;
 
         const completion = await this.generateCompletion(
-            prompt,
+            promptText,
             {
                 system,
                 temperature: 0.5, // Lower temperature for more consistent evaluations

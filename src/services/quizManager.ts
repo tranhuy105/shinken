@@ -701,7 +701,8 @@ class QuizSession extends EventEmitter {
                         question.question,
                         userAnswer,
                         question.answer,
-                        question.isReading
+                        question.isReading,
+                        question.original.sinoVietnamese
                     );
                 console.log(
                     `[QuizSession:${this.sessionId}] LLM evaluation result: ${evaluation.isCorrect}`
