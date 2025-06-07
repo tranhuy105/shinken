@@ -198,14 +198,23 @@
                     <div class="form-group">
                         <label for="csvText" class="form-label">CSV Content</label>
                         <div class="alert alert-info">
-                            Paste your CSV data below. The expected format is: japanese,reading,meaning,sinoVietnamese<br>
+                            Paste your CSV data below or upload a CSV file. The expected format is: japanese,reading,meaning,sinoVietnamese<br>
                             The "sinoVietnamese" (Âm Hán Việt) field is optional.<br>
-                            You can copy and paste directly from Google Sheets or Excel.
+                            You can copy and paste directly from Google Sheets or Excel.<br>
+                            If your data contains commas, enclose the field in double quotes: "text with, commas"
                         </div>
+                        <div class="file-upload-container">
+                            <input type="file" id="csvFileUpload" accept=".csv" class="file-upload-input">
+                            <label for="csvFileUpload" class="file-upload-label">
+                                <i class="ri-upload-2-line"></i> Choose CSV File
+                            </label>
+                            <span id="uploadFileName" class="file-name"></span>
+                        </div>
+                        <div class="text-divider">OR paste CSV content below</div>
                         <textarea class="form-control csv-textarea" id="csvText" placeholder="japanese,reading,meaning,sinoVietnamese
 本,ほん,sách,bổn
 水,みず,nước,thủy
-山,やま,núi,sơn"></textarea>
+赤字,あかじ,&quot;lỗ, thâm hụt&quot;,XÍCH TỰ"></textarea>
                     </div>
                 </form>
             </div>

@@ -74,9 +74,16 @@ document.addEventListener("DOMContentLoaded", () => {
         .addEventListener("click", showDecksList);
     document
         .getElementById("importCsvBtn")
-        .addEventListener("click", () =>
-            showModal(modals.importCsv)
-        );
+        .addEventListener("click", () => {
+            // Reset file upload field when opening the modal
+            document.getElementById(
+                "uploadFileName"
+            ).textContent = "";
+            document.getElementById("csvFileUpload").value =
+                "";
+            document.getElementById("csvText").value = "";
+            showModal(modals.importCsv);
+        });
     document
         .getElementById("createDeckBtn")
         .addEventListener("click", createNewDeck);
@@ -92,6 +99,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document
         .getElementById("confirmDeleteBtn")
         .addEventListener("click", deleteDeck);
+
+    // Setup CSV file upload handler
+    document
+        .getElementById("csvFileUpload")
+        .addEventListener("change", handleCsvFileUpload);
 
     // Add keyboard event listeners for copy/paste operations
     document.addEventListener("keydown", handleKeyDown);
@@ -211,7 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span>Your Vocabulary Decks</span>
             </div>
             <p class="help-text">
-                Manage your Japanese vocabulary decks here. Each deck can be used with the Shinken Discord bot for learning and testing.
+                Manage your Japanese vocabulary decks here. Each deck can be used with the Shinken bot for learning and testing.
                 Create new decks, edit existing ones, or import from CSV.
             </p>
         `;
@@ -1220,7 +1232,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // Parse CSV to items for validation
+            // Parse CSV to items for validation using proper CSV parsing
             const items = [];
             const lines = csvText.trim().split(/\r?\n/);
 
@@ -1236,7 +1248,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 i < lines.length;
                 i++
             ) {
-                const parts = lines[i].split(",");
+                // Parse CSV line properly handling quotes
+                const parts = parseCSVLine(lines[i]);
+
                 if (parts.length >= 3) {
                     items.push({
                         japanese: parts[0].trim(),
@@ -1248,6 +1262,47 @@ document.addEventListener("DOMContentLoaded", () => {
                                 : "",
                     });
                 }
+            }
+
+            // Helper function to parse CSV line with quoted fields
+            function parseCSVLine(line) {
+                const result = [];
+                let current = "";
+                let inQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+
+                    if (char === '"') {
+                        // Toggle quote state
+                        inQuotes = !inQuotes;
+                    } else if (char === "," && !inQuotes) {
+                        // End of field, add to result
+                        result.push(current);
+                        current = "";
+                    } else {
+                        // Add character to current field
+                        current += char;
+                    }
+                }
+
+                // Add the last field
+                result.push(current);
+
+                // Remove quotes from quoted fields
+                return result.map((field) => {
+                    field = field.trim();
+                    if (
+                        field.startsWith('"') &&
+                        field.endsWith('"')
+                    ) {
+                        return field.substring(
+                            1,
+                            field.length - 1
+                        );
+                    }
+                    return field;
+                });
             }
 
             // Validate items before importing
@@ -1378,5 +1433,35 @@ document.addEventListener("DOMContentLoaded", () => {
             "alertMessage"
         ).textContent = message;
         showModal(modals.alert);
+    }
+
+    // Function to handle CSV file upload
+    function handleCsvFileUpload(event) {
+        const fileInput = event.target;
+        const file = fileInput.files[0];
+
+        if (!file) return;
+
+        // Display file name
+        const fileNameElement = document.getElementById(
+            "uploadFileName"
+        );
+        fileNameElement.textContent = file.name;
+
+        // Read file contents
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const contents = e.target.result;
+            // Populate the textarea with file contents
+            document.getElementById("csvText").value =
+                contents;
+        };
+
+        reader.onerror = function () {
+            showAlert("Error", "Failed to read the file");
+        };
+
+        reader.readAsText(file);
     }
 });

@@ -326,9 +326,9 @@ router.post(
         }
 
         try {
-            // Parse CSV text
+            // Parse CSV text with proper handling of quoted fields
             const items: VocabularyItem[] = [];
-            const lines = csvText.trim().split("\n");
+            const lines = csvText.trim().split(/\r?\n/);
 
             // Skip header row if it exists
             const startIndex = lines[0]
@@ -342,7 +342,7 @@ router.post(
                 i < lines.length;
                 i++
             ) {
-                const parts = lines[i].split(",");
+                const parts = parseCSVLine(lines[i]);
                 if (parts.length >= 3) {
                     items.push({
                         japanese: parts[0].trim(),
@@ -354,6 +354,47 @@ router.post(
                                 : "",
                     });
                 }
+            }
+
+            // Helper function to parse CSV line with quoted fields
+            function parseCSVLine(line: string): string[] {
+                const result: string[] = [];
+                let current = "";
+                let inQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+
+                    if (char === '"') {
+                        // Toggle quote state
+                        inQuotes = !inQuotes;
+                    } else if (char === "," && !inQuotes) {
+                        // End of field, add to result
+                        result.push(current);
+                        current = "";
+                    } else {
+                        // Add character to current field
+                        current += char;
+                    }
+                }
+
+                // Add the last field
+                result.push(current);
+
+                // Remove quotes from quoted fields
+                return result.map((field) => {
+                    field = field.trim();
+                    if (
+                        field.startsWith('"') &&
+                        field.endsWith('"')
+                    ) {
+                        return field.substring(
+                            1,
+                            field.length - 1
+                        );
+                    }
+                    return field;
+                });
             }
 
             if (items.length === 0) {
