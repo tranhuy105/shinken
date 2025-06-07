@@ -396,8 +396,6 @@ router.post(
     async (req, res) => {
         const { items } = req.body;
 
-        console.log(items);
-
         if (!items || !Array.isArray(items)) {
             return res.status(400).json({
                 error: "Invalid request: items array is required",
@@ -405,18 +403,11 @@ router.post(
         }
 
         try {
-            console.log(
-                "Items received for validation:",
-                items
-            );
-
             // Access the validateItemsDetailed method
             const validation =
                 deckManagerInstance.validateItemsDetailed(
                     items
                 );
-
-            console.log("Validation result:", validation);
 
             return res.json(validation);
         } catch (error) {

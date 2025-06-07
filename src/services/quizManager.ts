@@ -807,6 +807,20 @@ class QuizSession extends EventEmitter {
                         inline: true,
                     }
                 );
+
+                // Add sinoVietnamese if available
+                if (
+                    question.original.sinoVietnamese &&
+                    question.original.sinoVietnamese.trim() !==
+                        ""
+                ) {
+                    feedbackFields.push({
+                        name: "Âm Hán Việt",
+                        value: question.original
+                            .sinoVietnamese,
+                        inline: true,
+                    });
+                }
             } else if (question.isForward) {
                 feedbackFields.push(
                     {
@@ -825,6 +839,20 @@ class QuizSession extends EventEmitter {
                         inline: true,
                     }
                 );
+
+                // Add sinoVietnamese if available
+                if (
+                    question.original.sinoVietnamese &&
+                    question.original.sinoVietnamese.trim() !==
+                        ""
+                ) {
+                    feedbackFields.push({
+                        name: "Âm Hán Việt",
+                        value: question.original
+                            .sinoVietnamese,
+                        inline: true,
+                    });
+                }
             } else {
                 feedbackFields.push(
                     {
@@ -843,6 +871,20 @@ class QuizSession extends EventEmitter {
                         inline: true,
                     }
                 );
+
+                // Add sinoVietnamese if available
+                if (
+                    question.original.sinoVietnamese &&
+                    question.original.sinoVietnamese.trim() !==
+                        ""
+                ) {
+                    feedbackFields.push({
+                        name: "Âm Hán Việt",
+                        value: question.original
+                            .sinoVietnamese,
+                        inline: true,
+                    });
+                }
             }
 
             const correctEmbed = new EmbedBuilder()
@@ -934,6 +976,20 @@ class QuizSession extends EventEmitter {
                         inline: false,
                     }
                 );
+
+                // Add sinoVietnamese if available
+                if (
+                    question.original.sinoVietnamese &&
+                    question.original.sinoVietnamese.trim() !==
+                        ""
+                ) {
+                    feedbackFields.push({
+                        name: "Âm Hán Việt",
+                        value: question.original
+                            .sinoVietnamese,
+                        inline: true,
+                    });
+                }
             } else if (question.isForward) {
                 feedbackFields.push(
                     {
@@ -957,6 +1013,20 @@ class QuizSession extends EventEmitter {
                         inline: false,
                     }
                 );
+
+                // Add sinoVietnamese if available
+                if (
+                    question.original.sinoVietnamese &&
+                    question.original.sinoVietnamese.trim() !==
+                        ""
+                ) {
+                    feedbackFields.push({
+                        name: "Âm Hán Việt",
+                        value: question.original
+                            .sinoVietnamese,
+                        inline: true,
+                    });
+                }
             } else {
                 feedbackFields.push(
                     {
@@ -980,6 +1050,20 @@ class QuizSession extends EventEmitter {
                         inline: false,
                     }
                 );
+
+                // Add sinoVietnamese if available
+                if (
+                    question.original.sinoVietnamese &&
+                    question.original.sinoVietnamese.trim() !==
+                        ""
+                ) {
+                    feedbackFields.push({
+                        name: "Âm Hán Việt",
+                        value: question.original
+                            .sinoVietnamese,
+                        inline: true,
+                    });
+                }
             }
 
             const incorrectEmbed = new EmbedBuilder()
@@ -1092,6 +1176,19 @@ class QuizSession extends EventEmitter {
                     inline: true,
                 }
             );
+
+            // Add sinoVietnamese if available
+            if (
+                question.original.sinoVietnamese &&
+                question.original.sinoVietnamese.trim() !==
+                    ""
+            ) {
+                feedbackFields.push({
+                    name: "Âm Hán Việt",
+                    value: question.original.sinoVietnamese,
+                    inline: true,
+                });
+            }
         } else if (question.isForward) {
             feedbackFields.push(
                 {
@@ -1110,6 +1207,19 @@ class QuizSession extends EventEmitter {
                     inline: true,
                 }
             );
+
+            // Add sinoVietnamese if available
+            if (
+                question.original.sinoVietnamese &&
+                question.original.sinoVietnamese.trim() !==
+                    ""
+            ) {
+                feedbackFields.push({
+                    name: "Âm Hán Việt",
+                    value: question.original.sinoVietnamese,
+                    inline: true,
+                });
+            }
         } else {
             feedbackFields.push(
                 {
@@ -1128,6 +1238,19 @@ class QuizSession extends EventEmitter {
                     inline: true,
                 }
             );
+
+            // Add sinoVietnamese if available
+            if (
+                question.original.sinoVietnamese &&
+                question.original.sinoVietnamese.trim() !==
+                    ""
+            ) {
+                feedbackFields.push({
+                    name: "Âm Hán Việt",
+                    value: question.original.sinoVietnamese,
+                    inline: true,
+                });
+            }
         }
 
         const explanation = question.isReading

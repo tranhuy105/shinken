@@ -1,17 +1,17 @@
 {
   "version": "2.0",
-  "lastSave": 1749279076710,
+  "lastSave": 1749280049389,
   "keys": {
     "21df851077dff080": {
       "minuteBucket": {
         "tokens": 15,
-        "lastRefill": 1749279047372,
+        "lastRefill": 1749279579886,
         "capacity": 15,
         "refillRate": 0.25
       },
       "dayBucket": {
         "tokens": 1500,
-        "lastRefill": 1749279047372,
+        "lastRefill": 1749279579886,
         "capacity": 1500,
         "refillRate": 0.017361111111111112
       },
@@ -23,18 +23,18 @@
       "totalRequests": 6,
       "totalFailures": 0,
       "healthScore": 100,
-      "lastHealthUpdate": 1749279047372
+      "lastHealthUpdate": 1749279579886
     },
     "2158647cd18893d1": {
       "minuteBucket": {
         "tokens": 15,
-        "lastRefill": 1749279047372,
+        "lastRefill": 1749279579886,
         "capacity": 15,
         "refillRate": 0.25
       },
       "dayBucket": {
         "tokens": 1500,
-        "lastRefill": 1749279047372,
+        "lastRefill": 1749279579886,
         "capacity": 1500,
         "refillRate": 0.017361111111111112
       },
@@ -46,18 +46,18 @@
       "totalRequests": 3,
       "totalFailures": 0,
       "healthScore": 100,
-      "lastHealthUpdate": 1749279047372
+      "lastHealthUpdate": 1749279579886
     },
     "9dcdab873084d6db": {
       "minuteBucket": {
         "tokens": 15,
-        "lastRefill": 1749279047372,
+        "lastRefill": 1749279579886,
         "capacity": 15,
         "refillRate": 0.25
       },
       "dayBucket": {
         "tokens": 1500,
-        "lastRefill": 1749279047372,
+        "lastRefill": 1749279579886,
         "capacity": 1500,
         "refillRate": 0.017361111111111112
       },
@@ -69,12 +69,12 @@
       "totalRequests": 4,
       "totalFailures": 0,
       "healthScore": 100,
-      "lastHealthUpdate": 1749279047372
+      "lastHealthUpdate": 1749279579886
     }
   },
   "globalStats": {
     "totalRequests": 13,
     "totalFailures": 0,
-    "uptime": 35918.517799999994
+    "uptime": 477256.3493
   }
 }
