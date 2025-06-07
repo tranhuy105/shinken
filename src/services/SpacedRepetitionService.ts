@@ -40,6 +40,27 @@ export class SpacedRepetitionService {
             incorrectCount: 0,
             remainingReviews: 0,
         }));
+        
+        // Shuffle questions to randomize the initial order
+        this.questions = this.shuffleQuestions(this.questions);
+        console.log(`[SpacedRepetitionService] Questions shuffled for randomized learning`);
+    }
+    
+    /**
+     * Shuffle questions using Fisher-Yates algorithm
+     */
+    private shuffleQuestions(
+        questions: SpacedRepetitionQuestion[]
+    ): SpacedRepetitionQuestion[] {
+        const newArray = [...questions];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [
+                newArray[j],
+                newArray[i],
+            ];
+        }
+        return newArray;
     }
 
     /**

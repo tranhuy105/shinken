@@ -830,8 +830,26 @@ class QuizSession extends EventEmitter {
                 .setTitle("✅ Chính xác!")
                 .setDescription(
                     `## ${evaluation.explanation}`
-                )
-                .addFields(
+                );
+
+            // Add fields based on question type
+            if (question.isReading || this.mode === 1) {
+                // For reading questions, highlight both reading and meaning
+                correctEmbed.addFields(
+                    {
+                        name: "Cách đọc",
+                        value: `**${question.original.reading}**`,
+                        inline: true,
+                    },
+                    {
+                        name: "Nghĩa",
+                        value: `**${question.original.meaning}**`,
+                        inline: true,
+                    }
+                );
+            } else {
+                // For meaning questions
+                correctEmbed.addFields(
                     {
                         name: "Nghĩa",
                         value: question.original.meaning,
@@ -842,10 +860,13 @@ class QuizSession extends EventEmitter {
                         value: question.original.reading,
                         inline: true,
                     }
-                )
-                .setFooter({
-                    text: `Chuỗi đúng: ${this.streakCount}`,
-                });
+                );
+            }
+
+            // Add footer
+            correctEmbed.setFooter({
+                text: `Chuỗi đúng: ${this.streakCount}`,
+            });
 
             // Add sino-vietnamese if available
             if (
@@ -886,13 +907,33 @@ class QuizSession extends EventEmitter {
                 .setTitle("❌ Chưa chính xác!")
                 .setDescription(
                     `## ${evaluation.explanation}`
-                )
-                .addFields(
+                );
+
+            // Add user's answer
+            incorrectEmbed.addFields({
+                name: "Câu trả lời của bạn",
+                value: userAnswer || "(không có)",
+                inline: false,
+            });
+
+            // Add fields based on question type
+            if (question.isReading || this.mode === 1) {
+                // For reading questions, highlight both reading and meaning
+                incorrectEmbed.addFields(
                     {
-                        name: "Câu trả lời của bạn",
-                        value: userAnswer || "(không có)",
-                        inline: false,
+                        name: "Cách đọc đúng",
+                        value: `**${question.original.reading}**`,
+                        inline: true,
                     },
+                    {
+                        name: "Nghĩa",
+                        value: `**${question.original.meaning}**`,
+                        inline: true,
+                    }
+                );
+            } else {
+                // For meaning questions
+                incorrectEmbed.addFields(
                     {
                         name: "Nghĩa",
                         value: question.original.meaning,
@@ -903,13 +944,15 @@ class QuizSession extends EventEmitter {
                         value: question.original.reading,
                         inline: true,
                     }
-                )
-                .setFooter({
-                    text: `Đã học: ${
-                        this.correctCount +
-                        this.incorrectCount
-                    }/${this.getTotalQuestions()}`,
-                });
+                );
+            }
+
+            // Add footer
+            incorrectEmbed.setFooter({
+                text: `Đã học: ${
+                    this.correctCount + this.incorrectCount
+                }/${this.getTotalQuestions()}`,
+            });
 
             // Add sino-vietnamese if available
             if (
@@ -937,7 +980,7 @@ class QuizSession extends EventEmitter {
                 resolve(null);
             }, 2000);
         });
-        
+
         // Ask next question
         await this.askNextQuestion();
     }
@@ -985,8 +1028,26 @@ class QuizSession extends EventEmitter {
         const timeoutEmbed = new EmbedBuilder()
             .setColor("#ff9900" as ColorResolvable)
             .setTitle("⏰ Hết thời gian!")
-            .setDescription(`## ${explanation}`)
-            .addFields(
+            .setDescription(`## ${explanation}`);
+
+        // Add fields based on question type
+        if (question.isReading || this.mode === 1) {
+            // For reading questions, highlight both reading and meaning
+            timeoutEmbed.addFields(
+                {
+                    name: "Cách đọc đúng",
+                    value: `**${question.original.reading}**`,
+                    inline: true,
+                },
+                {
+                    name: "Nghĩa",
+                    value: `**${question.original.meaning}**`,
+                    inline: true,
+                }
+            );
+        } else {
+            // For meaning questions
+            timeoutEmbed.addFields(
                 {
                     name: "Nghĩa",
                     value: question.original.meaning,
@@ -997,12 +1058,15 @@ class QuizSession extends EventEmitter {
                     value: question.original.reading,
                     inline: true,
                 }
-            )
-            .setFooter({
-                text: `Đã học: ${
-                    this.correctCount + this.incorrectCount
-                }/${this.getTotalQuestions()}`,
-            });
+            );
+        }
+
+        // Add footer
+        timeoutEmbed.setFooter({
+            text: `Đã học: ${
+                this.correctCount + this.incorrectCount
+            }/${this.getTotalQuestions()}`,
+        });
 
         // Add sino-vietnamese if available
         if (
@@ -1028,7 +1092,7 @@ class QuizSession extends EventEmitter {
                 resolve(null);
             }, 2000);
         });
-        
+
         // Ask next question
         await this.askNextQuestion();
     }

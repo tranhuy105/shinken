@@ -851,8 +851,8 @@ CORRECT ANSWER: "${correctAnswer}"`;
             promptText,
             {
                 system,
-                temperature: 0.5, // Lower temperature for more consistent evaluations
-                maxTokens: 500,
+                temperature: 0.3,
+                maxTokens: 800,
             }
         );
 
