@@ -1,5 +1,7 @@
+import { createCanvas } from "canvas";
 import {
     APIEmbedField,
+    AttachmentBuilder,
     ColorResolvable,
     DMChannel,
     EmbedBuilder,
@@ -299,6 +301,44 @@ class QuizSession extends EventEmitter {
     }
 
     /**
+     * Generate a question image for better visibility of Japanese characters
+     * @param questionText The Japanese text to display
+     * @returns The image as an AttachmentBuilder
+     */
+    private generateQuestionImage(
+        questionText: string
+    ): AttachmentBuilder {
+        // Create a canvas with appropriate size
+        const canvas = createCanvas(800, 400);
+        const ctx = canvas.getContext("2d");
+
+        // Fill background
+        ctx.fillStyle = "#ffffff"; // Discord dark theme background
+        ctx.fillRect(0, 0, 800, 400);
+
+        // Set text properties
+        ctx.fillStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Dynamically size the font based on text length - make it larger
+        const fontSize = Math.min(
+            250,
+            4000 / questionText.length
+        );
+        ctx.font = `bold ${fontSize}px 'Noto Sans JP', 'Arial', sans-serif`;
+
+        // Draw text in center
+        ctx.fillText(questionText, 400, 200);
+
+        // Convert to buffer and create attachment
+        const buffer = canvas.toBuffer("image/png");
+        return new AttachmentBuilder(buffer, {
+            name: "question.png",
+        });
+    }
+
+    /**
      * Get the user ID associated with this session
      * @returns The Discord user ID
      */
@@ -399,6 +439,9 @@ class QuizSession extends EventEmitter {
      * Ask the next question in the queue
      */
     private async askNextQuestion(): Promise<void> {
+        // Cleanup any existing collectors or timeouts first
+        this.cleanupCurrentQuestion();
+
         console.log(
             `[QuizSession:${this.sessionId}] Processing next question`
         );
@@ -505,32 +548,37 @@ class QuizSession extends EventEmitter {
             questionTypeLabel = "💭 Nghĩa (Việt → Nhật)";
         }
 
-        // Display extra info for spaced repetition mode
+        // Display minimal info for spaced repetition mode
         let extraInfo = "";
         if (
             this.studyMode === "spaced" &&
-            "state" in nextQuestion
+            "state" in nextQuestion &&
+            nextQuestion.state === QuestionState.Learning
         ) {
-            const srQuestion =
-                nextQuestion as SpacedRepetitionQuestion;
-            extraInfo = `\nTrạng thái: ${
-                srQuestion.state ===
-                QuestionState.NotLearned
-                    ? "Chưa học"
-                    : srQuestion.state ===
-                      QuestionState.Learning
-                    ? "Đang học"
-                    : "Đã học"
-            }`;
-
-            if (
-                srQuestion.state === QuestionState.Learning
-            ) {
-                extraInfo += `\nCần trả lời đúng thêm: ${srQuestion.remainingReviews} lần`;
-            }
+            extraInfo = `\n(Cần đúng thêm: ${nextQuestion.remainingReviews} lần)`;
         }
 
-        // Prepare question embed
+        // Determine if we should use an image for Japanese text
+        // Use image for reading questions or Japanese->Vietnamese questions (forward)
+        const shouldUseImage =
+            nextQuestion.isReading ||
+            nextQuestion.isForward;
+        let questionText;
+        let questionImage;
+
+        if (shouldUseImage) {
+            // Generate image for Japanese text
+            questionImage = this.generateQuestionImage(
+                nextQuestion.question
+            );
+            questionText = "Xem hình bên dưới"; // Add placeholder text instead of empty string
+        } else {
+            // For Vietnamese questions, just use normal text
+            questionText = `# ${nextQuestion.question}`;
+            questionImage = undefined;
+        }
+
+        // Prepare question embed with simplified design
         const questionEmbed = new EmbedBuilder()
             .setColor("#0099ff" as ColorResolvable)
             .setTitle(
@@ -540,30 +588,34 @@ class QuizSession extends EventEmitter {
                     1
                 }`
             )
-            .setDescription(
-                `**${nextQuestion.question}**${extraInfo}`
-            )
-            .addFields(
-                {
-                    name: "Loại câu hỏi",
-                    value: questionTypeLabel,
-                    inline: true,
-                },
-                {
-                    name: "Thời gian",
-                    value: `${this.timeoutSeconds} giây`,
-                    inline: true,
-                }
-            )
-            .setFooter({
-                text: "Gõ câu trả lời của bạn trong chat (hoặc gõ 'stop' để kết thúc)",
+            .setDescription(questionText + extraInfo)
+            .addFields({
+                name: questionTypeLabel,
+                value: `⏱️ ${this.timeoutSeconds} giây`,
+                inline: true,
             })
-            .setTimestamp();
+            .setFooter({
+                text: "Gõ câu trả lời của bạn hoặc 'stop' để kết thúc",
+            });
 
-        // Send question
-        await this.message.reply({
-            embeds: [questionEmbed],
-        });
+        // If using image, set it as the thumbnail
+        if (shouldUseImage) {
+            questionEmbed.setImage(
+                "attachment://question.png"
+            );
+        }
+
+        // Send question with or without image
+        if (shouldUseImage && questionImage) {
+            await this.message.reply({
+                embeds: [questionEmbed],
+                files: [questionImage],
+            });
+        } else {
+            await this.message.reply({
+                embeds: [questionEmbed],
+            });
+        }
 
         // Setup message collector for supported channel types
         const channel = this.message.channel;
@@ -629,12 +681,35 @@ class QuizSession extends EventEmitter {
     }
 
     /**
+     * Clean up resources from the current question
+     */
+    private cleanupCurrentQuestion(): void {
+        // Stop any active collector
+        if (this.collector) {
+            this.collector.stop();
+            this.collector = null;
+        }
+
+        // Clear any pending timeout
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+    }
+
+    /**
      * Process a user answer
      */
     private async processAnswer(
         userAnswer: string,
         question: QuizQuestion
     ): Promise<void> {
+        // Clean up collector
+        if (this.collector) {
+            this.collector.stop();
+            this.collector = null;
+        }
+
         // Check for stop command
         if (
             userAnswer.toLowerCase() === "stop" ||
@@ -739,13 +814,6 @@ class QuizSession extends EventEmitter {
                         .currentQuestion as SpacedRepetitionQuestion,
                     evaluation.isCorrect
                 );
-
-            // Get statistics for display
-            const stats =
-                this.spacedRepetitionService.getStatistics();
-            console.log(
-                `[QuizSession:${this.sessionId}] Spaced repetition stats: ${stats.learnedCount}/${stats.totalQuestions} learned (${stats.progressPercentage}%)`
-            );
         }
 
         // Handle correct answer
@@ -756,149 +824,41 @@ class QuizSession extends EventEmitter {
                 `[QuizSession:${this.sessionId}] Correct answer, total correct: ${this.correctCount}, streak: ${this.streakCount}`
             );
 
-            // Add spaced repetition info if applicable
-            let extraInfo = "";
-            if (
-                this.studyMode === "spaced" &&
-                this.currentQuestion
-            ) {
-                const srQuestion = this
-                    .currentQuestion as SpacedRepetitionQuestion;
-                extraInfo = `\n\nTrạng thái hiện tại: ${
-                    srQuestion.state ===
-                    QuestionState.NotLearned
-                        ? "Chưa học"
-                        : srQuestion.state ===
-                          QuestionState.Learning
-                        ? "Đang học"
-                        : "Đã học"
-                }`;
-
-                if (
-                    srQuestion.state ===
-                    QuestionState.Learning
-                ) {
-                    extraInfo += `\nCần trả lời đúng thêm: ${srQuestion.remainingReviews} lần`;
-                }
-
-                // Add progress info
-                const stats =
-                    this.spacedRepetitionService.getStatistics();
-                extraInfo += `\n\nTiến độ: ${stats.learnedCount}/${stats.totalQuestions} từ (${stats.progressPercentage}%)`;
-            }
-
-            // Create fields for correct answer feedback
-            const feedbackFields: APIEmbedField[] = [];
-
-            if (question.isReading) {
-                feedbackFields.push(
-                    {
-                        name: "Từ gốc",
-                        value: question.original.japanese,
-                        inline: true,
-                    },
-                    {
-                        name: "Cách đọc",
-                        value: question.original.reading,
-                        inline: true,
-                    },
-                    {
-                        name: "Nghĩa",
-                        value: question.original.meaning,
-                        inline: true,
-                    }
-                );
-
-                // Add sinoVietnamese if available
-                if (
-                    question.original.sinoVietnamese &&
-                    question.original.sinoVietnamese.trim() !==
-                        ""
-                ) {
-                    feedbackFields.push({
-                        name: "Âm Hán Việt",
-                        value: question.original
-                            .sinoVietnamese,
-                        inline: true,
-                    });
-                }
-            } else if (question.isForward) {
-                feedbackFields.push(
-                    {
-                        name: "Từ gốc",
-                        value: question.question,
-                        inline: true,
-                    },
-                    {
-                        name: "Cách đọc",
-                        value: question.original.reading,
-                        inline: true,
-                    },
-                    {
-                        name: "Nghĩa",
-                        value: question.answer,
-                        inline: true,
-                    }
-                );
-
-                // Add sinoVietnamese if available
-                if (
-                    question.original.sinoVietnamese &&
-                    question.original.sinoVietnamese.trim() !==
-                        ""
-                ) {
-                    feedbackFields.push({
-                        name: "Âm Hán Việt",
-                        value: question.original
-                            .sinoVietnamese,
-                        inline: true,
-                    });
-                }
-            } else {
-                feedbackFields.push(
-                    {
-                        name: "Nghĩa",
-                        value: question.question,
-                        inline: true,
-                    },
-                    {
-                        name: "Từ tiếng Nhật",
-                        value: question.original.japanese,
-                        inline: true,
-                    },
-                    {
-                        name: "Cách đọc",
-                        value: question.original.reading,
-                        inline: true,
-                    }
-                );
-
-                // Add sinoVietnamese if available
-                if (
-                    question.original.sinoVietnamese &&
-                    question.original.sinoVietnamese.trim() !==
-                        ""
-                ) {
-                    feedbackFields.push({
-                        name: "Âm Hán Việt",
-                        value: question.original
-                            .sinoVietnamese,
-                        inline: true,
-                    });
-                }
-            }
-
+            // Create simplified feedback for correct answer
             const correctEmbed = new EmbedBuilder()
                 .setColor("#00cc66" as ColorResolvable)
                 .setTitle("✅ Chính xác!")
                 .setDescription(
-                    evaluation.explanation + extraInfo
+                    `## ${evaluation.explanation}`
                 )
-                .addFields(feedbackFields)
+                .addFields(
+                    {
+                        name: "Nghĩa",
+                        value: question.original.meaning,
+                        inline: true,
+                    },
+                    {
+                        name: "Cách đọc",
+                        value: question.original.reading,
+                        inline: true,
+                    }
+                )
                 .setFooter({
-                    text: `Câu đúng: ${this.correctCount} | Chuỗi đúng hiện tại: ${this.streakCount}`,
-                })
-                .setTimestamp();
+                    text: `Chuỗi đúng: ${this.streakCount}`,
+                });
+
+            // Add sino-vietnamese if available
+            if (
+                question.original.sinoVietnamese &&
+                question.original.sinoVietnamese.trim() !==
+                    ""
+            ) {
+                correctEmbed.addFields({
+                    name: "Âm Hán Việt",
+                    value: question.original.sinoVietnamese,
+                    inline: true,
+                });
+            }
 
             await this.message.reply({
                 embeds: [correctEmbed],
@@ -920,175 +880,64 @@ class QuizSession extends EventEmitter {
                 this.incorrectQuestions.push(question);
             }
 
-            // Add spaced repetition info if applicable
-            let extraInfo = "";
-            if (
-                this.studyMode === "spaced" &&
-                this.currentQuestion
-            ) {
-                const srQuestion = this
-                    .currentQuestion as SpacedRepetitionQuestion;
-                extraInfo = `\n\nTrạng thái hiện tại: ${
-                    srQuestion.state ===
-                    QuestionState.NotLearned
-                        ? "Chưa học"
-                        : srQuestion.state ===
-                          QuestionState.Learning
-                        ? "Đang học"
-                        : "Đã học"
-                }`;
-
-                if (
-                    srQuestion.state ===
-                    QuestionState.Learning
-                ) {
-                    extraInfo += `\nCần trả lời đúng thêm: ${srQuestion.remainingReviews} lần`;
-                }
-
-                // Add progress info
-                const stats =
-                    this.spacedRepetitionService.getStatistics();
-                extraInfo += `\n\nTiến độ: ${stats.learnedCount}/${stats.totalQuestions} từ (${stats.progressPercentage}%)`;
-            }
-
-            // Create fields for the incorrect answer feedback
-            const feedbackFields: APIEmbedField[] = [];
-
-            if (question.isReading) {
-                feedbackFields.push(
-                    {
-                        name: "Từ gốc",
-                        value: question.original.japanese,
-                        inline: true,
-                    },
-                    {
-                        name: "Cách đọc đúng",
-                        value: question.original.reading,
-                        inline: true,
-                    },
-                    {
-                        name: "Câu trả lời của bạn",
-                        value: userAnswer || "(không có)",
-                        inline: true,
-                    },
-                    {
-                        name: "Nghĩa",
-                        value: question.original.meaning,
-                        inline: false,
-                    }
-                );
-
-                // Add sinoVietnamese if available
-                if (
-                    question.original.sinoVietnamese &&
-                    question.original.sinoVietnamese.trim() !==
-                        ""
-                ) {
-                    feedbackFields.push({
-                        name: "Âm Hán Việt",
-                        value: question.original
-                            .sinoVietnamese,
-                        inline: true,
-                    });
-                }
-            } else if (question.isForward) {
-                feedbackFields.push(
-                    {
-                        name: "Từ gốc",
-                        value: question.question,
-                        inline: true,
-                    },
-                    {
-                        name: "Nghĩa đúng",
-                        value: question.original.meaning,
-                        inline: true,
-                    },
-                    {
-                        name: "Câu trả lời của bạn",
-                        value: userAnswer || "(không có)",
-                        inline: true,
-                    },
-                    {
-                        name: "Cách đọc",
-                        value: question.original.reading,
-                        inline: false,
-                    }
-                );
-
-                // Add sinoVietnamese if available
-                if (
-                    question.original.sinoVietnamese &&
-                    question.original.sinoVietnamese.trim() !==
-                        ""
-                ) {
-                    feedbackFields.push({
-                        name: "Âm Hán Việt",
-                        value: question.original
-                            .sinoVietnamese,
-                        inline: true,
-                    });
-                }
-            } else {
-                feedbackFields.push(
-                    {
-                        name: "Nghĩa",
-                        value: question.question,
-                        inline: true,
-                    },
-                    {
-                        name: "Từ tiếng Nhật đúng",
-                        value: question.original.japanese,
-                        inline: true,
-                    },
-                    {
-                        name: "Câu trả lời của bạn",
-                        value: userAnswer || "(không có)",
-                        inline: true,
-                    },
-                    {
-                        name: "Cách đọc",
-                        value: question.original.reading,
-                        inline: false,
-                    }
-                );
-
-                // Add sinoVietnamese if available
-                if (
-                    question.original.sinoVietnamese &&
-                    question.original.sinoVietnamese.trim() !==
-                        ""
-                ) {
-                    feedbackFields.push({
-                        name: "Âm Hán Việt",
-                        value: question.original
-                            .sinoVietnamese,
-                        inline: true,
-                    });
-                }
-            }
-
+            // Create simplified feedback for incorrect answer
             const incorrectEmbed = new EmbedBuilder()
                 .setColor("#ff3366" as ColorResolvable)
                 .setTitle("❌ Chưa chính xác!")
                 .setDescription(
-                    evaluation.explanation + extraInfo
+                    `## ${evaluation.explanation}`
                 )
-                .addFields(feedbackFields)
+                .addFields(
+                    {
+                        name: "Câu trả lời của bạn",
+                        value: userAnswer || "(không có)",
+                        inline: false,
+                    },
+                    {
+                        name: "Nghĩa",
+                        value: question.original.meaning,
+                        inline: true,
+                    },
+                    {
+                        name: "Cách đọc",
+                        value: question.original.reading,
+                        inline: true,
+                    }
+                )
                 .setFooter({
-                    text: `Câu sai: ${
-                        this.incorrectCount
-                    } | Đã học: ${
+                    text: `Đã học: ${
                         this.correctCount +
                         this.incorrectCount
                     }/${this.getTotalQuestions()}`,
-                })
-                .setTimestamp();
+                });
+
+            // Add sino-vietnamese if available
+            if (
+                question.original.sinoVietnamese &&
+                question.original.sinoVietnamese.trim() !==
+                    ""
+            ) {
+                incorrectEmbed.addFields({
+                    name: "Âm Hán Việt",
+                    value: question.original.sinoVietnamese,
+                    inline: true,
+                });
+            }
 
             await this.message.reply({
                 embeds: [incorrectEmbed],
             });
         }
 
+        // Add a delay before showing the next question (2 seconds)
+        // Store the timeout so it can be cleared if needed
+        await new Promise((resolve) => {
+            this.timeout = setTimeout(() => {
+                this.timeout = null;
+                resolve(null);
+            }, 2000);
+        });
+        
         // Ask next question
         await this.askNextQuestion();
     }
@@ -1126,134 +975,7 @@ class QuizSession extends EventEmitter {
             this.incorrectQuestions.push(question);
         }
 
-        // Add spaced repetition info if applicable
-        let extraInfo = "";
-        if (
-            this.studyMode === "spaced" &&
-            this.currentQuestion
-        ) {
-            const srQuestion = this
-                .currentQuestion as SpacedRepetitionQuestion;
-            extraInfo = `\n\nTrạng thái hiện tại: ${
-                srQuestion.state ===
-                QuestionState.NotLearned
-                    ? "Chưa học"
-                    : srQuestion.state ===
-                      QuestionState.Learning
-                    ? "Đang học"
-                    : "Đã học"
-            }`;
-
-            if (
-                srQuestion.state === QuestionState.Learning
-            ) {
-                extraInfo += `\nCần trả lời đúng thêm: ${srQuestion.remainingReviews} lần`;
-            }
-
-            // Add progress info
-            const stats =
-                this.spacedRepetitionService.getStatistics();
-            extraInfo += `\n\nTiến độ: ${stats.learnedCount}/${stats.totalQuestions} từ (${stats.progressPercentage}%)`;
-        }
-
-        // Create fields for the timeout feedback
-        const feedbackFields: APIEmbedField[] = [];
-
-        if (question.isReading) {
-            feedbackFields.push(
-                {
-                    name: "Từ gốc",
-                    value: question.original.japanese,
-                    inline: true,
-                },
-                {
-                    name: "Cách đọc đúng",
-                    value: question.original.reading,
-                    inline: true,
-                },
-                {
-                    name: "Nghĩa",
-                    value: question.original.meaning,
-                    inline: true,
-                }
-            );
-
-            // Add sinoVietnamese if available
-            if (
-                question.original.sinoVietnamese &&
-                question.original.sinoVietnamese.trim() !==
-                    ""
-            ) {
-                feedbackFields.push({
-                    name: "Âm Hán Việt",
-                    value: question.original.sinoVietnamese,
-                    inline: true,
-                });
-            }
-        } else if (question.isForward) {
-            feedbackFields.push(
-                {
-                    name: "Từ gốc",
-                    value: question.question,
-                    inline: true,
-                },
-                {
-                    name: "Nghĩa đúng",
-                    value: question.original.meaning,
-                    inline: true,
-                },
-                {
-                    name: "Cách đọc",
-                    value: question.original.reading,
-                    inline: true,
-                }
-            );
-
-            // Add sinoVietnamese if available
-            if (
-                question.original.sinoVietnamese &&
-                question.original.sinoVietnamese.trim() !==
-                    ""
-            ) {
-                feedbackFields.push({
-                    name: "Âm Hán Việt",
-                    value: question.original.sinoVietnamese,
-                    inline: true,
-                });
-            }
-        } else {
-            feedbackFields.push(
-                {
-                    name: "Nghĩa",
-                    value: question.question,
-                    inline: true,
-                },
-                {
-                    name: "Từ tiếng Nhật đúng",
-                    value: question.original.japanese,
-                    inline: true,
-                },
-                {
-                    name: "Cách đọc",
-                    value: question.original.reading,
-                    inline: true,
-                }
-            );
-
-            // Add sinoVietnamese if available
-            if (
-                question.original.sinoVietnamese &&
-                question.original.sinoVietnamese.trim() !==
-                    ""
-            ) {
-                feedbackFields.push({
-                    name: "Âm Hán Việt",
-                    value: question.original.sinoVietnamese,
-                    inline: true,
-                });
-            }
-        }
-
+        // Create simplified timeout feedback
         const explanation = question.isReading
             ? `"${question.question}" đọc là "${question.answer}".`
             : question.isForward
@@ -1263,23 +985,50 @@ class QuizSession extends EventEmitter {
         const timeoutEmbed = new EmbedBuilder()
             .setColor("#ff9900" as ColorResolvable)
             .setTitle("⏰ Hết thời gian!")
-            .setDescription(
-                `Bạn không trả lời kịp thời gian. ${explanation}${extraInfo}`
+            .setDescription(`## ${explanation}`)
+            .addFields(
+                {
+                    name: "Nghĩa",
+                    value: question.original.meaning,
+                    inline: true,
+                },
+                {
+                    name: "Cách đọc",
+                    value: question.original.reading,
+                    inline: true,
+                }
             )
-            .addFields(feedbackFields)
             .setFooter({
-                text: `Câu sai: ${
-                    this.incorrectCount
-                } | Đã học: ${
+                text: `Đã học: ${
                     this.correctCount + this.incorrectCount
                 }/${this.getTotalQuestions()}`,
-            })
-            .setTimestamp();
+            });
+
+        // Add sino-vietnamese if available
+        if (
+            question.original.sinoVietnamese &&
+            question.original.sinoVietnamese.trim() !== ""
+        ) {
+            timeoutEmbed.addFields({
+                name: "Âm Hán Việt",
+                value: question.original.sinoVietnamese,
+                inline: true,
+            });
+        }
 
         await this.message.reply({
             embeds: [timeoutEmbed],
         });
 
+        // Add a delay before showing the next question (2 seconds)
+        // Store the timeout so it can be cleared if needed
+        await new Promise((resolve) => {
+            this.timeout = setTimeout(() => {
+                this.timeout = null;
+                resolve(null);
+            }, 2000);
+        });
+        
         // Ask next question
         await this.askNextQuestion();
     }
@@ -1288,6 +1037,9 @@ class QuizSession extends EventEmitter {
      * End the quiz session and show summary
      */
     private async endSession(): Promise<void> {
+        // Clean up any active resources
+        this.cleanupCurrentQuestion();
+
         console.log(
             `[QuizSession:${this.sessionId}] Ending session, correct: ${this.correctCount}, incorrect: ${this.incorrectCount}`
         );

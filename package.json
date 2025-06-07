@@ -27,6 +27,7 @@
         "@types/node": "^20.11.19",
         "@types/wanakana": "^5.3.0",
         "axios": "^1.6.7",
+        "canvas": "^3.1.0",
         "csv-parser": "^3.0.0",
         "csv-writer": "^1.6.0",
         "discord.js": "^14.14.1",
