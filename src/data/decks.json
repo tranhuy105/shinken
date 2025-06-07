@@ -1,0 +1,9 @@
+{
+    "decks": [
+        {
+            "name": "default",
+            "description": "Bộ từ tiếng Nhật cơ bản",
+            "filename": "default.csv"
+        }
+    ]
+}

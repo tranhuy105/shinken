@@ -1,0 +1,42 @@
+{
+    "name": "shinken",
+    "version": "1.0.0",
+    "description": "Japanese learning Discord bot with LLM integration",
+    "main": "dist/index.js",
+    "scripts": {
+        "start": "node dist/index.js",
+        "dev": "nodemon --watch src/**/*.ts --exec npx ts-node src/index.ts",
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "set-avatar": "npx ts-node src/set-avatar.ts",
+        "check-gemini-keys": "ts-node src/utils/checkGeminiKeys.ts"
+    },
+    "keywords": [
+        "japanese",
+        "learning",
+        "discord",
+        "llm",
+        "bot"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@types/express": "^4.17.21",
+        "@types/js-yaml": "^4.0.9",
+        "@types/node": "^20.11.19",
+        "@types/wanakana": "^5.3.0",
+        "axios": "^1.6.7",
+        "csv-parser": "^3.0.0",
+        "discord.js": "^14.14.1",
+        "dotenv": "^16.4.5",
+        "express": "^4.18.2",
+        "js-yaml": "^4.1.0",
+        "shinken": "file:",
+        "typescript": "^5.3.3",
+        "wanakana": "^5.3.1"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.3",
+        "ts-node": "^10.9.2"
+    }
+}

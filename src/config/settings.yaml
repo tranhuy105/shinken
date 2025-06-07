@@ -1,0 +1,56 @@
+# Shinken Discord Bot Configuration
+# This file contains all application settings
+
+# Discord bot settings
+discord:
+    # Command prefixes with multiple variations to handle mobile issues
+    # Includes both regular and full-width exclamation marks
+    prefixes:
+        - "sk!"
+        - "Sk!"
+        - "SK!"
+        - "sk！"
+        - "Sk！"
+        - "SK！"
+    # Activity status that shows on Discord
+    activityStatus: "sk!help"
+    # Activity type: 0=Playing, 1=Streaming, 2=Listening, 3=Watching, 5=Competing
+    activityType: 2
+
+# LLM service settings
+llm:
+    # Ollama settings for local LLM
+    ollama:
+        baseUrl: "http://localhost:11434"
+        defaultModel: "llama3.2:latest"
+        timeout: 30000
+
+    # Google Gemini settings
+    gemini:
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        defaultModel: "gemini-2.0-flash"
+        # Rate limits for Gemini 2.0 Flash
+        minuteLimit: 15
+        dayLimit: 1500
+
+    # Retry configuration for API calls
+    retry:
+        maxRetries: 3
+        baseDelay: 1000
+        maxDelay: 5000
+
+# Quiz settings
+quiz:
+    defaultDeck: "default"
+    defaultTimeoutSeconds: 30
+    # Study modes: "standard" (just go through questions), "conquest" (repeat incorrect), "spaced" (spaced repetition)
+    defaultStudyMode: "spaced"
+    # Quiz mode: 0=All, 1=Reading, 2=Meaning bidirectional
+    defaultMode: 1
+
+# File paths and directories
+paths:
+    dataDir: "./src/data"
+    configDir: "./src/config"
+    decksFile: "decks.json"
+    persistenceDir: "./src/data"
