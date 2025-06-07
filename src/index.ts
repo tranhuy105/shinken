@@ -199,6 +199,15 @@ app.get("/", (req, res) => {
     );
 });
 
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "alive",
+        uptime: process.uptime(),
+        botReady: client.isReady(),
+        timestamp: new Date().toISOString(),
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(
