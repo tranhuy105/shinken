@@ -1,3 +1,4 @@
+import { registerFont } from "canvas";
 import {
     ActivityType,
     Client,
@@ -13,6 +14,16 @@ import settingsInstance from "./services/settingsInstance";
 
 // Load environment variables
 dotenv.config();
+
+// Register fonts for canvas
+// These paths are relative to the project root
+try {
+    registerFont(path.join(__dirname, "../fonts/NotoSansJP-Regular.ttf"), { family: "Noto Sans JP" });
+    registerFont(path.join(__dirname, "../fonts/NotoSansJP-Bold.ttf"), { family: "Noto Sans JP", weight: "bold" });
+    console.log("Fonts registered successfully");
+} catch (error) {
+    console.error("Error registering fonts:", error);
+}
 
 // Command prefixes from settings
 const PREFIXES =

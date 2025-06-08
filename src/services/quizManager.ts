@@ -301,43 +301,77 @@ class QuizSession extends EventEmitter {
     }
 
     /**
-     * Generate a question image for better visibility of Japanese characters
+     * Ultra-safe version that guarantees text will fit
      * @param questionText The Japanese text to display
      * @returns The image as an AttachmentBuilder
      */
     private generateQuestionImage(
         questionText: string
     ): AttachmentBuilder {
-        // Create a canvas with appropriate size
-        const canvas = createCanvas(800, 400);
+        const canvas = createCanvas(500, 400);
         const ctx = canvas.getContext("2d");
 
         // Fill background
-        ctx.fillStyle = "#ffffff"; // Discord dark theme background
-        ctx.fillRect(0, 0, 800, 400);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 500, 400);
 
-        // Set text properties
         ctx.fillStyle = "#000000";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Dynamically size the font based on text length - make it larger
-        const fontSize = Math.min(
-            250,
-            4000 / questionText.length
+        // Very conservative bounds
+        const maxWidth = 420; // Even more conservative
+        const maxHeight = 250;
+
+        // Start with a more reasonable font size based on text length
+        let fontSize = Math.min(
+            100,
+            Math.max(30, 600 / questionText.length)
         );
+
+        // Fine-tune the font size
+        while (fontSize > 15) {
+            ctx.font = `bold ${fontSize}px 'Noto Sans JP', 'Arial', sans-serif`;
+            const metrics = ctx.measureText(questionText);
+
+            // Check if it fits with some margin
+            if (metrics.width <= maxWidth) {
+                break;
+            }
+
+            fontSize -= 2; // Even smaller steps
+        }
+
+        // Final safety check - calculate exact scale needed
+        ctx.font = `bold ${fontSize}px 'Noto Sans JP', 'Arial', sans-serif`;
+        const finalMetrics = ctx.measureText(questionText);
+
+        if (finalMetrics.width > maxWidth) {
+            // Calculate exact scaling factor needed
+            const scaleFactor =
+                maxWidth / finalMetrics.width;
+            fontSize = Math.floor(
+                fontSize * scaleFactor * 0.95
+            ); // 95% to be extra safe
+            fontSize = Math.max(fontSize, 16); // Absolute minimum
+        }
+
+        // Set final font
         ctx.font = `bold ${fontSize}px 'Noto Sans JP', 'Arial', sans-serif`;
 
-        // Draw text in center
-        ctx.fillText(questionText, 400, 200);
+        // Minimal stroke for clarity
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 0.5;
+        ctx.strokeText(questionText, 250, 200);
 
-        // Convert to buffer and create attachment
+        // Draw main text
+        ctx.fillText(questionText, 250, 200);
+
         const buffer = canvas.toBuffer("image/png");
         return new AttachmentBuilder(buffer, {
             name: "question.png",
         });
     }
-
     /**
      * Get the user ID associated with this session
      * @returns The Discord user ID
