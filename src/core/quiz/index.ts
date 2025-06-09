@@ -4,7 +4,6 @@ export { JapaneseQuizManager } from "./QuizManager";
 export { QuizSession } from "./QuizSession";
 
 // Export generators
-export * from "./generators/MeaningQuestionGenerator";
 export * from "./generators/MixedQuestionGenerator";
 export * from "./generators/MultipleChoiceQuestionGenerator";
 export * from "./generators/QuestionGenerator";
@@ -20,3 +19,4 @@ export * from "./strategies/StudyStrategyFactory";
 
 // Export types
 export * from "./QuizTypes";
+
