@@ -4,3 +4,6 @@ dist
 .env
 src/data/decks
 src/data/persistence
+
+*.log
+logs/

@@ -9,8 +9,11 @@ import dotenv from "dotenv";
 import express from "express";
 import fs from "fs";
 import path from "path";
+import settingsInstance from "./core/settings/settingsInstance";
 import adminRoutes from "./routes/adminRoutes";
-import settingsInstance from "./services/settingsInstance";
+import { getLogger } from "./utils/logger";
+
+const logger = getLogger("MAIN");
 
 // Load environment variables
 dotenv.config();
@@ -18,11 +21,23 @@ dotenv.config();
 // Register fonts for canvas
 // These paths are relative to the project root
 try {
-    registerFont(path.join(__dirname, "../fonts/NotoSansJP-Regular.ttf"), { family: "Noto Sans JP" });
-    registerFont(path.join(__dirname, "../fonts/NotoSansJP-Bold.ttf"), { family: "Noto Sans JP", weight: "bold" });
-    console.log("Fonts registered successfully");
+    registerFont(
+        path.join(
+            __dirname,
+            "../fonts/NotoSansJP-Regular.ttf"
+        ),
+        { family: "Noto Sans JP" }
+    );
+    registerFont(
+        path.join(
+            __dirname,
+            "../fonts/NotoSansJP-Bold.ttf"
+        ),
+        { family: "Noto Sans JP", weight: "bold" }
+    );
+    logger.info("Fonts registered successfully");
 } catch (error) {
-    console.error("Error registering fonts:", error);
+    logger.error("Error registering fonts:", error);
 }
 
 // Command prefixes from settings
@@ -71,14 +86,14 @@ for (const file of commandFiles) {
             }
         }
     } else {
-        console.log(
+        logger.warn(
             `[WARNING] Command at ${filePath} is missing required properties.`
         );
     }
 }
 
 client.once("ready", () => {
-    console.log(`Logged in as ${client.user?.tag}!`);
+    logger.info(`Logged in as ${client.user?.tag}!`);
     // Use activity status from settings
     const discordSettings =
         settingsInstance.getDiscordSettings();
@@ -192,7 +207,7 @@ client.on("messageCreate", async (message) => {
         try {
             await command.execute(message, args);
         } catch (error) {
-            console.error(
+            logger.error(
                 `Error executing ${commandName}:`,
                 error
             );
@@ -220,8 +235,8 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(
+    logger.info(`Server running on port ${PORT}`);
+    logger.info(
         `Admin dashboard available at: http://localhost:${PORT}/admin`
     );
 });

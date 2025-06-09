@@ -2,13 +2,16 @@ import csv from "csv-parser";
 import { createObjectCsvWriter } from "csv-writer";
 import fs from "fs";
 import path from "path";
+import { getLogger } from "../../utils/logger";
 import {
     DeckInfo,
     ValidationError,
     ValidationResult,
     VocabularyItem,
-} from "../models/QuizTypes";
-import settingsInstance from "./settingsInstance";
+} from "../quiz/QuizTypes";
+import settingsInstance from "../settings/settingsInstance";
+
+const logger = getLogger("DeckManager");
 
 /**
  * Class responsible for managing Japanese vocabulary decks
@@ -24,9 +27,7 @@ export class DeckManager {
         this.pathSettings =
             settingsInstance.getPathSettings();
 
-        console.log(
-            "[DeckManager] Initializing deck manager"
-        );
+        logger.debug("Initializing deck manager");
 
         // Load deck information
         this.loadDecks();
@@ -41,8 +42,8 @@ export class DeckManager {
             const dataDir = this.pathSettings.dataDir;
             if (!fs.existsSync(dataDir)) {
                 fs.mkdirSync(dataDir, { recursive: true });
-                console.log(
-                    `[DeckManager] Created data directory: ${dataDir}`
+                logger.debug(
+                    `Created data directory: ${dataDir}`
                 );
             }
 
@@ -53,8 +54,8 @@ export class DeckManager {
 
             // Create default deck config if it doesn't exist
             if (!fs.existsSync(deckConfigPath)) {
-                console.log(
-                    `[DeckManager] Creating default deck config at ${deckConfigPath}`
+                logger.debug(
+                    `Creating default deck config at ${deckConfigPath}`
                 );
                 const defaultConfig = {
                     decks: [
@@ -77,8 +78,8 @@ export class DeckManager {
                     "default.csv"
                 );
                 if (!fs.existsSync(defaultDeckPath)) {
-                    console.log(
-                        `[DeckManager] Creating default deck at ${defaultDeckPath}`
+                    logger.debug(
+                        `Creating default deck at ${defaultDeckPath}`
                     );
                     const sampleData =
                         "japanese,reading,meaning\n" +
@@ -95,8 +96,8 @@ export class DeckManager {
             }
 
             // Load deck configuration
-            console.log(
-                `[DeckManager] Loading deck configuration from ${deckConfigPath}`
+            logger.debug(
+                `Loading deck configuration from ${deckConfigPath}`
             );
             const deckConfig = JSON.parse(
                 fs.readFileSync(deckConfigPath, "utf-8")
@@ -111,14 +112,11 @@ export class DeckManager {
                 );
             }
 
-            console.log(
-                `[DeckManager] Loaded ${this.decks.length} decks`
+            logger.debug(
+                `Loaded ${this.decks.length} decks`
             );
         } catch (error) {
-            console.error(
-                "[DeckManager] Error loading decks:",
-                error
-            );
+            logger.error("Error loading decks:", error);
         }
     }
 
@@ -129,8 +127,8 @@ export class DeckManager {
         name: string,
         filename: string
     ): Promise<void> {
-        console.log(
-            `[DeckManager] Loading deck: ${name} from ${filename}`
+        logger.debug(
+            `Loading deck: ${name} from ${filename}`
         );
         return new Promise((resolve, reject) => {
             const deckPath = path.join(
@@ -140,8 +138,8 @@ export class DeckManager {
             const items: VocabularyItem[] = [];
 
             if (!fs.existsSync(deckPath)) {
-                console.warn(
-                    `[DeckManager] Deck file not found: ${deckPath}`
+                logger.warn(
+                    `Deck file not found: ${deckPath}`
                 );
                 this.deckMap.set(name, []);
                 resolve();
@@ -168,14 +166,14 @@ export class DeckManager {
                 })
                 .on("end", () => {
                     this.deckMap.set(name, items);
-                    console.log(
-                        `[DeckManager] Loaded ${items.length} items from deck ${name}`
+                    logger.debug(
+                        `Loaded ${items.length} items from deck ${name}`
                     );
                     resolve();
                 })
                 .on("error", (error) => {
-                    console.error(
-                        `[DeckManager] Error loading deck ${name}:`,
+                    logger.error(
+                        `Error loading deck ${name}:`,
                         error
                     );
                     reject(error);
@@ -194,8 +192,8 @@ export class DeckManager {
      * List all available decks with descriptions
      */
     public listAvailableDecks(): string[] {
-        console.log(
-            `[DeckManager] Listing available decks (total: ${this.decks.length})`
+        logger.debug(
+            `Listing available decks (total: ${this.decks.length})`
         );
         return this.decks.map(
             (deck) => `${deck.name}: ${deck.description}`
@@ -229,8 +227,8 @@ export class DeckManager {
         try {
             // Check if the deck already exists
             if (this.deckExists(name)) {
-                console.error(
-                    `[DeckManager] Deck already exists: ${name}`
+                logger.error(
+                    `Deck already exists: ${name}`
                 );
                 return false;
             }
@@ -240,8 +238,8 @@ export class DeckManager {
                 const validation =
                     this.validateItems(items);
                 if (!validation.valid) {
-                    console.error(
-                        `[DeckManager] Validation error: ${validation.error}`
+                    logger.error(
+                        `Validation error: ${validation.error}`
                     );
                     throw new Error(validation.error);
                 }
@@ -271,13 +269,11 @@ export class DeckManager {
             // Update the deck configuration file
             await this.saveDeckConfig();
 
-            console.log(
-                `[DeckManager] Created new deck: ${name}`
-            );
+            logger.debug(`Created new deck: ${name}`);
             return true;
         } catch (error) {
-            console.error(
-                `[DeckManager] Error creating deck: ${name}`,
+            logger.error(
+                `Error creating deck: ${name}`,
                 error
             );
             return false;
@@ -558,9 +554,7 @@ export class DeckManager {
         try {
             // Check if the deck exists
             if (!this.deckExists(deckName)) {
-                console.error(
-                    `[DeckManager] Deck not found: ${deckName}`
-                );
+                logger.error(`Deck not found: ${deckName}`);
                 return false;
             }
 
@@ -569,8 +563,8 @@ export class DeckManager {
                 (deck) => deck.name === deckName
             );
             if (!deckInfo) {
-                console.error(
-                    `[DeckManager] Deck info not found: ${deckName}`
+                logger.error(
+                    `Deck info not found: ${deckName}`
                 );
                 return false;
             }
@@ -578,8 +572,8 @@ export class DeckManager {
             // Validate items
             const validation = this.validateItems(items);
             if (!validation.valid) {
-                console.error(
-                    `[DeckManager] Validation error: ${validation.error}`
+                logger.error(
+                    `Validation error: ${validation.error}`
                 );
                 throw new Error(validation.error);
             }
@@ -594,13 +588,13 @@ export class DeckManager {
             // Update the in-memory map
             this.deckMap.set(deckName, items);
 
-            console.log(
-                `[DeckManager] Updated deck: ${deckName} with ${items.length} items`
+            logger.debug(
+                `Updated deck: ${deckName} with ${items.length} items`
             );
             return true;
         } catch (error) {
-            console.error(
-                `[DeckManager] Error updating deck: ${deckName}`,
+            logger.error(
+                `Error updating deck: ${deckName}`,
                 error
             );
             return false;
@@ -616,9 +610,7 @@ export class DeckManager {
         try {
             // Check if the deck exists
             if (!this.deckExists(deckName)) {
-                console.error(
-                    `[DeckManager] Deck not found: ${deckName}`
-                );
+                logger.error(`Deck not found: ${deckName}`);
                 return false;
             }
 
@@ -627,8 +619,8 @@ export class DeckManager {
                 (deck) => deck.name === deckName
             );
             if (deckIndex === -1) {
-                console.error(
-                    `[DeckManager] Deck info not found: ${deckName}`
+                logger.error(
+                    `Deck info not found: ${deckName}`
                 );
                 return false;
             }
@@ -651,13 +643,11 @@ export class DeckManager {
             // Update the deck configuration file
             await this.saveDeckConfig();
 
-            console.log(
-                `[DeckManager] Deleted deck: ${deckName}`
-            );
+            logger.debug(`Deleted deck: ${deckName}`);
             return true;
         } catch (error) {
-            console.error(
-                `[DeckManager] Error deleting deck: ${deckName}`,
+            logger.error(
+                `Error deleting deck: ${deckName}`,
                 error
             );
             return false;
@@ -743,8 +733,8 @@ export class DeckManager {
             // Validate the imported items
             const validation = this.validateItems(items);
             if (!validation.valid) {
-                console.error(
-                    `[DeckManager] Validation error in import: ${validation.error}`
+                logger.error(
+                    `Validation error in import: ${validation.error}`
                 );
                 throw new Error(validation.error);
             }
@@ -757,8 +747,8 @@ export class DeckManager {
             );
             return success;
         } catch (error) {
-            console.error(
-                `[DeckManager] Error importing deck from CSV:`,
+            logger.error(
+                `Error importing deck from CSV:`,
                 error
             );
             return false;

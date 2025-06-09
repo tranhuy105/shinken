@@ -3,7 +3,7 @@ import {
     EmbedBuilder,
     Message,
 } from "discord.js";
-import quizManagerInstance from "../services/quizManagerInstance";
+import quizManagerInstance from "../core/quiz/quizManagerInstance";
 
 export const data = {
     name: "d",
@@ -24,7 +24,7 @@ export async function execute(message: Message) {
             )
             .addFields({
                 name: "**Hướng dẫn**",
-                value: "• Liên hệ admin để thêm bộ thẻ\n• Kiểm tra lại đường dẫn file thẻ\n• Sử dụng `sk!help` để xem hướng dẫn",
+                value: "• Liên hệ admin để thêm bộ thẻ\n• Kiểm tra lại đường dẫn file thẻ\n• Sử dụng `s!help` để xem hướng dẫn",
                 inline: false,
             })
             .setTimestamp()

@@ -2,7 +2,10 @@ import axios from "axios";
 import * as crypto from "crypto";
 import * as fs from "fs/promises";
 import * as path from "path";
-import settingsInstance from "./settingsInstance";
+import { getLogger } from "../../utils/logger";
+import settingsInstance from "../settings/settingsInstance";
+
+const logger = getLogger("GeminiLoadBalancer");
 
 interface TokenBucket {
     tokens: number;
@@ -105,8 +108,8 @@ export class GeminiLoadBalancer {
         this.initializePersistence();
         this.startPeriodicSave();
 
-        console.log(
-            `[UltraSmartLB] 🧠 Initialized with ${this.apiKeys.length} keys, IQ level: MAXIMUM`
+        logger.debug(
+            `Initialized with ${this.apiKeys.length} keys`
         );
     }
 
@@ -147,20 +150,18 @@ export class GeminiLoadBalancer {
             const state = await this.loadState();
             if (state) {
                 this.restoreFromState(state);
-                console.log(
-                    `[UltraSmartLB] 💾 Restored state from ${new Date(
+                logger.debug(
+                    `Restored state from ${new Date(
                         state.lastSave
                     ).toISOString()}`
                 );
             } else {
                 this.initializeDefaultState();
-                console.log(
-                    `[UltraSmartLB] 🆕 Initialized fresh state`
-                );
+                logger.debug(`Initialized fresh state`);
             }
         } catch (error) {
             console.warn(
-                `[UltraSmartLB] ⚠️ Persistence init failed, using memory-only mode:`,
+                `Persistence init failed, using memory-only mode:`,
                 error
             );
             this.initializeDefaultState();
@@ -177,8 +178,8 @@ export class GeminiLoadBalancer {
 
             // Validate state version
             if (state.version !== this.STATE_VERSION) {
-                console.log(
-                    `[UltraSmartLB] 🔄 State version mismatch, reinitializing`
+                logger.debug(
+                    `State version mismatch, reinitializing`
                 );
                 return null;
             }
@@ -342,9 +343,9 @@ export class GeminiLoadBalancer {
         });
 
         const selected = scoredKeys[0].key;
-        console.log(
-            `[UltraSmartLB] 🎯 Selected key ...${selected.slice(
-                -4
+        logger.debug(
+            `Selected key ...${selected.slice(
+                -2
             )} (score: ${scoredKeys[0].score.toFixed(1)})`
         );
 
@@ -583,7 +584,7 @@ export class GeminiLoadBalancer {
                 );
 
                 console.error(
-                    `[UltraSmartLB] ❌ Key ...${key.slice(
+                    `❌ Key ...${key.slice(
                         -4
                     )} failed (attempt ${attempt + 1}):`,
                     isRateLimit ? "RATE_LIMIT" : "ERROR"
@@ -681,26 +682,19 @@ export class GeminiLoadBalancer {
                 JSON.stringify(state, null, 2)
             );
         } catch (error) {
-            console.warn(
-                "[UltraSmartLB] ⚠️ Failed to save state:",
-                error
-            );
+            console.warn("⚠️ Failed to save state:", error);
         }
     }
 
     private async gracefulShutdown(): Promise<void> {
-        console.log(
-            "[UltraSmartLB] 🛑 Graceful shutdown initiated..."
-        );
+        logger.debug("Graceful shutdown initiated...");
 
         if (this.saveTimer) {
             clearInterval(this.saveTimer);
         }
 
         await this.saveState();
-        console.log(
-            "[UltraSmartLB] 💾 State saved, goodbye!"
-        );
+        logger.debug("State saved, goodbye!");
         process.exit(0);
     }
 
@@ -716,7 +710,7 @@ export class GeminiLoadBalancer {
                 availableKeys: this.apiKeys.filter((key) =>
                     this.isKeyAvailable(key, now)
                 ).length,
-                intelligenceLevel: "MAXIMUM 🧠",
+                intelligenceLevel: "MAXIMUM",
                 uptime: process.uptime(),
             },
             keys: this.apiKeys.map((key, index) => {
@@ -805,10 +799,8 @@ export class GeminiLoadBalancer {
         );
         await this.saveState();
 
-        console.log(
-            `[UltraSmartLB] 🔄 Manually reset key ...${key.slice(
-                -4
-            )}`
+        logger.debug(
+            `Manually reset key ...${key.slice(-2)}`
         );
         return true;
     }

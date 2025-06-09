@@ -6,6 +6,7 @@ import {
 
 export const data = {
     name: "help",
+    aliases: ["h", "?"],
     description: "Hiển thị thông tin trợ giúp về bot",
 };
 
@@ -21,10 +22,12 @@ export async function execute(message: Message) {
                 name: "**LỆNH CƠ BẢN**",
                 value:
                     "```yaml\n" +
-                    "sk!q     : Bắt đầu phiên học tương tác\n" +
-                    "sk!q help : Hướng dẫn sử dụng sk!q\n" +
-                    "sk!d     : Xem danh sách bộ từ vựng\n" +
-                    "sk!help  : Hiển thị menu trợ giúp\n" +
+                    "s!q     : Bắt đầu phiên học tương tác\n" +
+                    "s!q help : Hướng dẫn sử dụng s!q\n" +
+                    "s!d     : Xem danh sách bộ từ vựng\n" +
+                    "s!h  : Hiển thị menu trợ giúp\n" +
+                    "s!e : Giải thích thuật ngữ/cụm từ/ngữ pháp tiếng Nhật\n" +
+                    "s!r : Ôn lại từ vựng đã học (và sai)\n" +
                     "```",
                 inline: false,
             },

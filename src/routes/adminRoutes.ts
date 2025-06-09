@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
-import { VocabularyItem } from "../models/QuizTypes";
-import deckManagerInstance from "../services/deckManagerInstance";
+import deckManagerInstance from "../core/deck/deckManagerInstance";
+import { VocabularyItem } from "../core/quiz/QuizTypes";
 
 const router = express.Router();
 

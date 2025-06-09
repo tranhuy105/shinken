@@ -3,8 +3,14 @@ import {
     EmbedBuilder,
     Message,
 } from "discord.js";
-import quizManagerInstance from "../services/quizManagerInstance";
-import settingsInstance from "../services/settingsInstance";
+import quizManagerInstance from "../core/quiz/quizManagerInstance";
+import {
+    QuestionDirection,
+    QuizMode,
+    QuizOptions,
+    StudyMode,
+} from "../core/quiz/QuizTypes";
+import settingsInstance from "../core/settings/settingsInstance";
 
 export const data = {
     name: "q",
@@ -14,16 +20,22 @@ export const data = {
 };
 
 // Helper function to parse named arguments
-function parseNamedArgs(args: string[]) {
+function parseNamedArgs(args: string[]): QuizOptions {
     const settings = settingsInstance.getQuizSettings();
 
     // Default values
-    const config = {
-        deck: settings.defaultDeck,
-        mode: settings.defaultMode,
+    const config: QuizOptions = {
+        deckName: settings.defaultDeck,
+        mode:
+            (settings.defaultMode as unknown as QuizMode) ||
+            QuizMode.Mixed,
+        studyMode:
+            (settings.defaultStudyMode as StudyMode) ||
+            StudyMode.Standard,
         range: "all",
-        timeout: settings.defaultTimeoutSeconds,
-        study: settings.defaultStudyMode,
+        timeoutSeconds: settings.defaultTimeoutSeconds,
+        direction: QuestionDirection.Forward,
+        numChoices: 4,
     };
 
     // Parse named arguments
@@ -43,11 +55,14 @@ function parseNamedArgs(args: string[]) {
                 switch (key) {
                     case "deck":
                     case "d":
-                        config.deck = value;
+                        config.deckName = value;
                         break;
                     case "mode":
                     case "m":
-                        config.mode = parseInt(value, 10);
+                        config.mode = parseInt(
+                            value,
+                            10
+                        ) as QuizMode;
                         break;
                     case "range":
                     case "r":
@@ -55,13 +70,30 @@ function parseNamedArgs(args: string[]) {
                         break;
                     case "timeout":
                     case "t":
-                        config.timeout =
+                        config.timeoutSeconds =
                             parseInt(value, 10) ||
-                            config.timeout;
+                            config.timeoutSeconds;
                         break;
                     case "study":
                     case "s":
-                        config.study = value;
+                        config.studyMode =
+                            value as StudyMode;
+                        break;
+                    case "direction":
+                        if (
+                            [
+                                "forward",
+                                "backward",
+                                "both",
+                            ].includes(value)
+                        ) {
+                            config.direction =
+                                value as QuestionDirection;
+                        }
+                        break;
+                    case "choices":
+                        config.numChoices =
+                            parseInt(value, 10) || 4;
                         break;
                 }
             }
@@ -73,11 +105,14 @@ function parseNamedArgs(args: string[]) {
                 switch (paramName) {
                     case "deck":
                     case "d":
-                        config.deck = value;
+                        config.deckName = value;
                         break;
                     case "mode":
                     case "m":
-                        config.mode = parseInt(value, 10);
+                        config.mode = parseInt(
+                            value,
+                            10
+                        ) as QuizMode;
                         break;
                     case "range":
                     case "r":
@@ -85,13 +120,30 @@ function parseNamedArgs(args: string[]) {
                         break;
                     case "timeout":
                     case "t":
-                        config.timeout =
+                        config.timeoutSeconds =
                             parseInt(value, 10) ||
-                            config.timeout;
+                            config.timeoutSeconds;
                         break;
                     case "study":
                     case "s":
-                        config.study = value;
+                        config.studyMode =
+                            value as StudyMode;
+                        break;
+                    case "direction":
+                        if (
+                            [
+                                "forward",
+                                "backward",
+                                "both",
+                            ].includes(value)
+                        ) {
+                            config.direction =
+                                value as QuestionDirection;
+                        }
+                        break;
+                    case "choices":
+                        config.numChoices =
+                            parseInt(value, 10) || 4;
                         break;
                 }
             }
@@ -115,21 +167,24 @@ function parseNamedArgs(args: string[]) {
 
             switch (paramChar) {
                 case "d":
-                    config.deck = value;
+                    config.deckName = value;
                     break;
                 case "m":
-                    config.mode = parseInt(value, 10);
+                    config.mode = parseInt(
+                        value,
+                        10
+                    ) as QuizMode;
                     break;
                 case "r":
                     config.range = value;
                     break;
                 case "t":
-                    config.timeout =
+                    config.timeoutSeconds =
                         parseInt(value, 10) ||
-                        config.timeout;
+                        config.timeoutSeconds;
                     break;
                 case "s":
-                    config.study = value;
+                    config.studyMode = value as StudyMode;
                     break;
             }
         }
@@ -137,20 +192,24 @@ function parseNamedArgs(args: string[]) {
         else {
             switch (i) {
                 case 0:
-                    config.deck = arg;
+                    config.deckName = arg;
                     break;
                 case 1:
-                    config.mode = parseInt(arg, 10);
+                    config.mode = parseInt(
+                        arg,
+                        10
+                    ) as QuizMode;
                     break;
                 case 2:
                     config.range = arg;
                     break;
                 case 3:
-                    config.timeout =
-                        parseInt(arg, 10) || config.timeout;
+                    config.timeoutSeconds =
+                        parseInt(arg, 10) ||
+                        config.timeoutSeconds;
                     break;
                 case 4:
-                    config.study = arg;
+                    config.studyMode = arg as StudyMode;
                     break;
             }
         }
@@ -159,33 +218,37 @@ function parseNamedArgs(args: string[]) {
     return config;
 }
 
+// Helper function to get mode name
+function getModeName(mode: QuizMode): string {
+    switch (mode) {
+        case QuizMode.Reading:
+            return "📖 Đọc (Kanji → Âm)";
+        case QuizMode.ReverseMCQ:
+            return "📋 Trắc nghiệm (Việt → Nhật)";
+        case QuizMode.Mixed:
+            return "🎲 Hỗn hợp";
+        default:
+            return "Không xác định";
+    }
+}
+
 // Helper function to show usage examples
 function getUsageEmbed(): EmbedBuilder {
     return new EmbedBuilder()
         .setColor("#FFA500" as ColorResolvable)
-        .setTitle("📖 Cách sử dụng lệnh Quiz")
+        .setTitle("Cách sử dụng lệnh Quiz")
         .setDescription(
-            "Bạn có thể sử dụng lệnh với nhiều cách khác nhau:"
+            "Bạn có thể sử dụng các tham số sau:"
         )
         .addFields(
             {
-                name: "**1. Cách cũ (theo thứ tự):**",
-                value: "```sk!q [deck] [mode] [range] [timeout] [study]```",
-                inline: false,
-            },
-            {
-                name: "**2. Cách mới (chỉ định tham số):**",
-                value: "```sk!q --study=conquest\nsk!q -s conquest\nsk!q --mode=2 --study=conquest\nsk!q -m 2 -s conquest```",
-                inline: false,
-            },
-            {
                 name: "**Tham số có thể dùng:**",
-                value: "• `--deck` hoặc `-d`: Tên bộ thẻ\n• `--mode` hoặc `-m`: Chế độ (1=đọc, 2=nghĩa)\n• `--range` hoặc `-r`: Phạm vi thẻ (all, 1-20, 1-100, ...)\n• `--timeout` hoặc `-t`: Thời gian (giây)\n• `--study` hoặc `-s`: Chế độ học\n• `help`: Hiển thị hướng dẫn sử dụng",
+                value: "• `--deck` hoặc `-d`: Tên bộ thẻ\n• `--mode` hoặc `-m`: Chế độ (1=Đọc, 4=Trắc nghiệm, 0=Hỗn hợp)\n• `--range` hoặc `-r`: Phạm vi thẻ (all, 1-20, 1-100, ...)\n• `--timeout` hoặc `-t`: Thời gian (giây)\n• `--study` hoặc `-s`: Chế độ học (standard, conquest, spaced, learn)\n• `--choices`: Số lựa chọn trong trắc nghiệm (mặc định: 4)\n• `help`: Hiển thị hướng dẫn sử dụng",
                 inline: false,
             },
             {
                 name: "**Ví dụ thực tế:**",
-                value: "```sk!q -s conquest\nsk!q --study=conquest --timeout=45\nsk!q -m 1 -s review -t 20```",
+                value: "```s!q -s conquest\ns!q --mode=4 --study=standard\ns!q -m 2 -t 20```",
                 inline: false,
             }
         )
@@ -213,73 +276,10 @@ export async function execute(
     const config = parseNamedArgs(args);
 
     try {
-        // Create an embed to confirm the study session
-        const embed = new EmbedBuilder()
-            .setColor("#45B7D1" as ColorResolvable)
-            .setTitle("🚀 Bắt đầu phiên học tiếng Nhật")
-            .setDescription(
-                "```diff\n+ Chuẩn bị khởi động phiên học với cấu hình sau:\n```"
-            )
-            .addFields(
-                {
-                    name: "**Bộ thẻ**",
-                    value: `\`${config.deck}\``,
-                    inline: true,
-                },
-                {
-                    name: "**Chế độ**",
-                    value:
-                        config.mode === 1
-                            ? "📖 Đọc (Kanji → Âm)"
-                            : "🔄 Nghĩa (2 chiều)",
-                    inline: true,
-                },
-                {
-                    name: "**Phạm vi**",
-                    value: `📌 \`${config.range}\``,
-                    inline: true,
-                },
-                {
-                    name: "**Thời gian**",
-                    value: `⏰ \`${config.timeout}s\`/câu`,
-                    inline: true,
-                },
-                {
-                    name: "**Chế độ học**",
-                    value: `\`${config.study}\``,
-                    inline: true,
-                },
-                {
-                    name: "**Ghi chú**",
-                    value: "Gõ `stop` để thoát quiz",
-                    inline: true,
-                }
-            )
-            .addFields({
-                name: "**Sẵn sàng học tập?**",
-                value: "Quiz sẽ bắt đầu ngay sau thông báo này...",
-                inline: false,
-            })
-            .setThumbnail(
-                "https://i.pinimg.com/736x/57/ff/2d/57ff2d7ae01ba227bb0e7f8d42033dc2.jpg"
-            )
-            .setTimestamp()
-            .setFooter({
-                text: "Shinken Bot học tiếng Nhật • Trần Huy",
-                iconURL:
-                    "https://i.pinimg.com/736x/57/ff/2d/57ff2d7ae01ba227bb0e7f8d42033dc2.jpg",
-            });
-
-        await message.reply({ embeds: [embed] });
-
-        // Start the session
+        // Start the session with the new options
         await quizManagerInstance.startSession(
             message,
-            config.deck,
-            parseInt(config.mode.toString(), 10),
-            config.range,
-            config.timeout,
-            config.study
+            config
         );
     } catch (error) {
         console.error(error);
@@ -296,7 +296,7 @@ export async function execute(
             })
             .addFields({
                 name: "**Giải pháp:**",
-                value: "• Kiểm tra tên bộ thẻ với `sk!d`\n• Thử lại với tham số mặc định\n• Liên hệ admin nếu lỗi vẫn tiếp diễn\n• Gõ `sk!q help` để xem cách dùng",
+                value: "• Kiểm tra tên bộ thẻ với `s!d`\n• Thử lại với tham số mặc định\n• Liên hệ admin nếu lỗi vẫn tiếp diễn\n• Gõ `s!q help` để xem cách dùng",
                 inline: false,
             })
             .setTimestamp()

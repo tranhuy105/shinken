@@ -2,9 +2,11 @@ import * as dotenv from "dotenv";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as path from "path";
+import { getLogger } from "../../utils/logger";
 
 // Ensure environment variables are loaded
 dotenv.config();
+const logger = getLogger("SettingsManager");
 
 /**
  * Configuration interface for all application settings
@@ -59,15 +61,8 @@ export interface AppSettings {
  */
 const DEFAULT_SETTINGS: AppSettings = {
     discord: {
-        prefixes: [
-            "sk!",
-            "Sk!",
-            "SK!",
-            "sk！",
-            "Sk！",
-            "SK！",
-        ],
-        activityStatus: "sk!help",
+        prefixes: ["s!", "S!", "s！", "S！"],
+        activityStatus: "s!help",
         activityType: 2, // Listening
     },
     llm: {
@@ -159,8 +154,8 @@ export class SettingsManager {
             // Create default config file if it doesn't exist
             if (!fs.existsSync(this.configFile)) {
                 this.saveSettings();
-                console.log(
-                    `[Settings] Created default config at ${this.configFile}`
+                logger.info(
+                    `Created default config at ${this.configFile}`
                 );
             }
 
@@ -178,12 +173,12 @@ export class SettingsManager {
                 DEFAULT_SETTINGS,
                 yamlSettings
             );
-            console.log(
-                `[Settings] Loaded configuration from ${this.configFile}`
+            logger.info(
+                `Loaded configuration from ${this.configFile}`
             );
         } catch (error) {
-            console.warn(
-                `[Settings] Error loading settings, using defaults: ${error}`
+            logger.warn(
+                `Error loading settings, using defaults: ${error}`
             );
         }
     }
@@ -217,8 +212,8 @@ export class SettingsManager {
                 "utf8"
             );
         } catch (error) {
-            console.error(
-                `[Settings] Failed to save settings: ${error}`
+            logger.error(
+                `Failed to save settings: ${error}`
             );
         }
     }

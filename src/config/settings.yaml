@@ -6,14 +6,12 @@ discord:
     # Command prefixes with multiple variations to handle mobile issues
     # Includes both regular and full-width exclamation marks
     prefixes:
-        - "sk!"
-        - "Sk!"
-        - "SK!"
-        - "sk！"
-        - "Sk！"
-        - "SK！"
+        - "S!"
+        - "s!"
+        - "s！"
+        - "S！"
     # Activity status that shows on Discord
-    activityStatus: "sk!help"
+    activityStatus: "s!h"
     # Activity type: 0=Playing, 1=Streaming, 2=Listening, 3=Watching, 5=Competing
     activityType: 2
 
@@ -44,7 +42,7 @@ quiz:
     defaultDeck: "default"
     defaultTimeoutSeconds: 30
     # Study modes: "standard" (just go through questions), "conquest" (repeat incorrect), "spaced" (spaced repetition)
-    defaultStudyMode: "spaced"
+    defaultStudyMode: "conquest"
     # Quiz mode: 0=All, 1=Reading, 2=Meaning bidirectional
     defaultMode: 1
 

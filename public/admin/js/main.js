@@ -271,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                         </div>
                         <div class="deck-usage">
-                            sk!q -d ${deck.name}
+                            s!q -d ${deck.name}
                         </div>
                     </div>
                     <div class="deck-footer">
@@ -342,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
             deckNameEdit.value = deckName;
             deckDescriptionEdit.value =
                 currentDeckDescription;
-            deckUsageInfo.textContent = `sk!q -d ${deckName}`;
+            deckUsageInfo.textContent = `s!q -d ${deckName}`;
 
             renderSpreadsheet(data.items);
 
@@ -1127,7 +1127,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Update UI elements to reflect metadata changes
                 editDeckName.textContent = currentDeckName;
-                deckUsageInfo.textContent = `sk!q -d ${currentDeckName}`;
+                deckUsageInfo.textContent = `s!q -d ${currentDeckName}`;
 
                 showAlert(
                     "Success",
