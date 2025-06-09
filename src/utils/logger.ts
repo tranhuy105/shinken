@@ -85,11 +85,6 @@ const logger = winston.createLogger({
             level: "error",
             format: combine(timestamp(), format.json()),
         }),
-        // Combined logs
-        new winston.transports.File({
-            filename: "logs/combined.log",
-            format: combine(timestamp(), format.json()),
-        }),
     ],
 });
 
