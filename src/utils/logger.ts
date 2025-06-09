@@ -79,12 +79,6 @@ const logger = winston.createLogger({
                 colorize({ all: true })
             ),
         }),
-        // File transport for errors
-        new winston.transports.File({
-            filename: "logs/error.log",
-            level: "error",
-            format: combine(timestamp(), format.json()),
-        }),
     ],
 });
 
