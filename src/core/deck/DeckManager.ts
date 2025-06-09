@@ -200,6 +200,10 @@ export class DeckManager {
         );
     }
 
+    public listAvailableDecksNames(): string[] {
+        return this.decks.map((deck) => deck.name);
+    }
+
     /**
      * Get vocabulary items for a specific deck
      */

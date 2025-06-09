@@ -3,6 +3,7 @@ import {
     ActivityType,
     Client,
     Collection,
+    Events,
     GatewayIntentBits,
 } from "discord.js";
 import dotenv from "dotenv";
@@ -12,6 +13,7 @@ import path from "path";
 import settingsInstance from "./core/settings/settingsInstance";
 import adminRoutes from "./routes/adminRoutes";
 import { getLogger } from "./utils/logger";
+import { registerSlashCommands } from "./utils/registerSlashCommands";
 
 const logger = getLogger("MAIN");
 
@@ -92,7 +94,39 @@ for (const file of commandFiles) {
     }
 }
 
-client.once("ready", () => {
+// Setup slash command collection
+client.slashCommands = new Collection();
+const slashCommandsPath = path.join(
+    __dirname,
+    "slashCommands"
+);
+
+// Load slash commands if directory exists
+if (fs.existsSync(slashCommandsPath)) {
+    const slashCommandFiles = fs
+        .readdirSync(slashCommandsPath)
+        .filter(
+            (file) =>
+                file.endsWith(".js") || file.endsWith(".ts")
+        );
+
+    for (const file of slashCommandFiles) {
+        const filePath = path.join(slashCommandsPath, file);
+        const command = require(filePath);
+
+        if ("data" in command && "execute" in command) {
+            client.slashCommands.set(
+                command.data.name,
+                command
+            );
+            logger.info(
+                `Loaded slash command: ${command.data.name}`
+            );
+        }
+    }
+}
+
+client.once("ready", async () => {
     logger.info(`Logged in as ${client.user?.tag}!`);
     // Use activity status from settings
     const discordSettings =
@@ -103,6 +137,73 @@ client.once("ready", () => {
             type: discordSettings.activityType as ActivityType,
         }
     );
+
+    if (process.env.REGISTER_SLASH_COMMANDS === "true") {
+        // Register slash commands
+        await registerSlashCommands(client);
+    }
+});
+
+// Handle slash command interactions
+client.on(Events.InteractionCreate, async (interaction) => {
+    // Handle autocomplete interactions
+    if (interaction.isAutocomplete()) {
+        const command = client.slashCommands.get(
+            interaction.commandName
+        );
+
+        if (!command || !command.autocomplete) {
+            return;
+        }
+
+        try {
+            await command.autocomplete(interaction);
+        } catch (error) {
+            logger.error(
+                `Error handling autocomplete for ${interaction.commandName}:`,
+                error
+            );
+        }
+
+        return;
+    }
+
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.slashCommands.get(
+        interaction.commandName
+    );
+
+    if (!command) {
+        logger.warn(
+            `No slash command matching ${interaction.commandName} was found`
+        );
+        return;
+    }
+
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        logger.error(
+            `Error executing slash command ${interaction.commandName}:`,
+            error
+        );
+
+        const errorMessage =
+            "Đã xảy ra lỗi khi thực hiện lệnh.";
+
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+                content: errorMessage,
+                ephemeral: true,
+            });
+        } else {
+            await interaction.reply({
+                content: errorMessage,
+                ephemeral: true,
+            });
+        }
+    }
 });
 
 // Function to normalize text for mobile compatibility
@@ -248,5 +349,6 @@ client.login(process.env.DISCORD_TOKEN);
 declare module "discord.js" {
     export interface Client {
         commands: Collection<string, any>;
+        slashCommands: Collection<string, any>;
     }
 }

@@ -23,9 +23,17 @@ const logLevels = {
     },
 };
 
-// Custom format for console output - SLF4J style
+// Custom format for console output - SLF4J style with error handling
 const consoleFormat = printf(
-    ({ level, message, timestamp, module }) => {
+    ({
+        level,
+        message,
+        timestamp,
+        module,
+        stack,
+        error,
+        ...meta
+    }) => {
         const moduleName = String(module || "app");
 
         // Remove color codes from level for proper padding calculation
@@ -52,7 +60,65 @@ const consoleFormat = printf(
             .toUpperCase()
             .padEnd(5);
 
-        return `${timestamp} [${paddedModule}] ${paddedLevel} - ${message}`;
+        let logMessage = `${timestamp} [${paddedModule}] ${paddedLevel} - ${message}`;
+
+        // Add error details if present
+        if (error) {
+            if (typeof error === "string") {
+                logMessage += `\n  Error: ${error}`;
+            } else if (error instanceof Error) {
+                logMessage += `\n  Error: ${error.message}`;
+                if (error.stack) {
+                    logMessage += `\n${error.stack}`;
+                }
+            } else {
+                logMessage += `\n  Error: ${JSON.stringify(
+                    error,
+                    null,
+                    2
+                )}`;
+            }
+        }
+
+        // Add stack trace if present (from winston's error formatting)
+        if (stack && !error) {
+            logMessage += `\n${stack}`;
+        }
+
+        // Add any additional metadata (excluding internal winston fields)
+        const excludeFields = [
+            "service",
+            "level",
+            "message",
+            "timestamp",
+            "module",
+            "stack",
+            "error",
+        ];
+        const additionalMeta = Object.keys(meta).filter(
+            (key) => !excludeFields.includes(key)
+        );
+
+        if (additionalMeta.length > 0) {
+            const metaEntries = additionalMeta.map(
+                (key) => {
+                    const value =
+                        typeof meta[key] === "object"
+                            ? JSON.stringify(
+                                  meta[key],
+                                  null,
+                                  2
+                              )
+                            : meta[key];
+                    return `${key}: ${value}`;
+                }
+            );
+            logMessage += `\n  Meta: ${metaEntries.join(
+                ", "
+            )}`;
+        }
+
+        return logMessage;
     }
 );
 
@@ -88,8 +154,17 @@ winston.addColors(logLevels.colors);
 // Helper function to create a logger for a specific module
 export function getLogger(module: string) {
     return {
-        error: (message: string, ...meta: any[]) =>
-            logger.error(message, { module, ...meta }),
+        error: (
+            message: string,
+            error?: any,
+            ...meta: any[]
+        ) => {
+            logger.error(message, {
+                module,
+                error,
+                ...meta,
+            });
+        },
         warn: (message: string, ...meta: any[]) =>
             logger.warn(message, { module, ...meta }),
         info: (message: string, ...meta: any[]) =>

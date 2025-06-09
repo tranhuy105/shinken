@@ -58,7 +58,7 @@ export class MultipleChoiceQuestionGenerator extends BaseQuestionGenerator<Multi
             ]);
 
             questions.push({
-                question: `Từ tiếng Nhật nào có nghĩa là "${item.meaning}"?`,
+                question: `${item.meaning}?`,
                 choices,
                 correctAnswer: item.japanese,
                 original: item,

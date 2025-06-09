@@ -1,4 +1,5 @@
 import {
+    ChatInputCommandInteraction,
     ColorResolvable,
     EmbedBuilder,
     Message,
@@ -41,14 +42,29 @@ export class JapaneseQuizManager {
     }
 
     /**
-     * Start a new quiz session with options
+     * List all available decks names, used for autocomplete
+     */
+    public listAvailableDecksNames(): string[] {
+        return deckManagerInstance.listAvailableDecksNames();
+    }
+
+    /**
+     * Start a new quiz session with options (message-based)
      */
     public async startSession(
-        message: Message,
+        source: Message | ChatInputCommandInteraction,
         options: QuizOptions
     ): Promise<void> {
+        // Check if source is a Message or Interaction
+        const isInteraction =
+            source instanceof ChatInputCommandInteraction;
+
+        // Get user ID based on source type
+        const userId = isInteraction
+            ? source.user.id
+            : source.author.id;
+
         // Check if user already has an active session
-        const userId = message.author.id;
         const existingSession = Array.from(
             this.sessionMap.values()
         ).find(
@@ -67,9 +83,21 @@ export class JapaneseQuizManager {
                 )
                 .setTimestamp();
 
-            await message.reply({
-                embeds: [errorEmbed],
-            });
+            if (isInteraction) {
+                if (source.deferred) {
+                    await source.editReply({
+                        embeds: [errorEmbed],
+                    });
+                } else {
+                    await source.reply({
+                        embeds: [errorEmbed],
+                    });
+                }
+            } else {
+                await source.reply({
+                    embeds: [errorEmbed],
+                });
+            }
             return;
         }
 
@@ -115,13 +143,29 @@ export class JapaneseQuizManager {
                     .setColor("#ff0000" as ColorResolvable)
                     .setTitle("❌ Lỗi")
                     .setDescription(
-                        `Không tìm thấy bộ thẻ "${options.deckName}". Sử dụng \`s!d\` để xem các bộ thẻ có sẵn.`
+                        `Không tìm thấy bộ thẻ "${
+                            options.deckName
+                        }". Sử dụng \`${
+                            isInteraction ? "/" : "s!"
+                        }d\` để xem các bộ thẻ có sẵn.`
                     )
                     .setTimestamp();
 
-                await message.reply({
-                    embeds: [errorEmbed],
-                });
+                if (isInteraction) {
+                    if (source.deferred) {
+                        await source.editReply({
+                            embeds: [errorEmbed],
+                        });
+                    } else {
+                        await source.reply({
+                            embeds: [errorEmbed],
+                        });
+                    }
+                } else {
+                    await source.reply({
+                        embeds: [errorEmbed],
+                    });
+                }
                 return;
             }
 
@@ -149,28 +193,43 @@ export class JapaneseQuizManager {
                     )
                     .setTimestamp();
 
-                await message.reply({
-                    embeds: [errorEmbed],
-                });
+                if (isInteraction) {
+                    if (source.deferred) {
+                        await source.editReply({
+                            embeds: [errorEmbed],
+                        });
+                    } else {
+                        await source.reply({
+                            embeds: [errorEmbed],
+                        });
+                    }
+                } else {
+                    await source.reply({
+                        embeds: [errorEmbed],
+                    });
+                }
                 return;
             }
 
             // Create session
-            const sessionId = `${
-                message.author.id
-            }-${Date.now()}`;
+            const sessionId = `${userId}-${Date.now()}`;
             logger.info(
                 `Creating session with ID: ${sessionId}`
             );
 
-            // Add temp deck items to message for QuizSession to access
+            // Add temp deck items for QuizSession to access
+            const messageOrInteraction = source as any;
             if (isTempDeck) {
-                (message as any).tempDeckItems = deck;
+                messageOrInteraction.tempDeckItems = deck;
             }
+
+            // Add an isInteraction flag to help QuizSession distinguish the source
+            messageOrInteraction.isInteraction =
+                isInteraction;
 
             const session = new QuizSession(
                 sessionId,
-                message,
+                messageOrInteraction,
                 options,
                 this.textConverter
             );
@@ -205,7 +264,21 @@ export class JapaneseQuizManager {
                 )
                 .setTimestamp();
 
-            await message.reply({ embeds: [errorEmbed] });
+            if (isInteraction) {
+                if (source.deferred) {
+                    await source.editReply({
+                        embeds: [errorEmbed],
+                    });
+                } else {
+                    await source.reply({
+                        embeds: [errorEmbed],
+                    });
+                }
+            } else {
+                await source.reply({
+                    embeds: [errorEmbed],
+                });
+            }
         }
     }
 
@@ -213,20 +286,30 @@ export class JapaneseQuizManager {
      * Start a session with custom items
      */
     public async startSessionWithItems(
-        message: Message,
+        source: Message | ChatInputCommandInteraction,
         options: QuizOptions,
         items: VocabularyItem[]
     ): Promise<void> {
+        // Check if source is a Message or Interaction
+        const isInteraction =
+            source instanceof ChatInputCommandInteraction;
+        const userId = isInteraction
+            ? source.user.id
+            : source.author.id;
+
         // Create a temporary deck
         const tempDeckName =
             options.deckName ||
-            `temp_${message.author.id}_${Date.now()}`;
+            `temp_${userId}_${Date.now()}`;
 
         // Store items in the temporary deck map
         this.tempDecks.set(tempDeckName, [...items]);
 
-        // Also store the items directly on the message for the QuizSession to access
-        (message as any).tempDeckItems = [...items];
+        // Also store the items directly for the QuizSession to access
+        (source as any).tempDeckItems = [...items];
+
+        // Add an isInteraction flag to help QuizSession distinguish the source
+        (source as any).isInteraction = isInteraction;
 
         // Update the deck name in options
         options.deckName = tempDeckName;
@@ -236,7 +319,7 @@ export class JapaneseQuizManager {
         );
 
         // Start a session with the temporary deck
-        await this.startSession(message, options);
+        await this.startSession(source, options);
     }
 
     /**

@@ -74,7 +74,9 @@ export class QuizSession extends EventEmitter {
      * Get the user ID associated with this session
      */
     public getUserId(): string {
-        return this.message.author.id;
+        return (this.message as any).isInteraction
+            ? (this.message as any).user.id
+            : this.message.author.id;
     }
 
     /**
@@ -128,7 +130,25 @@ export class QuizSession extends EventEmitter {
 
             // Send welcome message
             const embed = this.createStartEmbed();
-            await this.message.reply({ embeds: [embed] });
+
+            // Check if message is actually an interaction
+            if ((this.message as any).isInteraction) {
+                const interaction = this.message as any;
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        embeds: [embed],
+                    });
+                } else if (!interaction.replied) {
+                    await interaction.reply({
+                        embeds: [embed],
+                    });
+                }
+            } else {
+                // It's a regular message
+                await this.message.reply({
+                    embeds: [embed],
+                });
+            }
 
             // Ask first question
             await this.askNextQuestion();
@@ -301,15 +321,34 @@ export class QuizSession extends EventEmitter {
         }
 
         // Send question with or without image
-        if (shouldUseImage && questionImage) {
-            await this.message.reply({
-                embeds: [questionEmbed],
-                files: [questionImage],
-            });
+        if ((this.message as any).isInteraction) {
+            const interaction = this.message as any;
+            const payload =
+                shouldUseImage && questionImage
+                    ? {
+                          embeds: [questionEmbed],
+                          files: [questionImage],
+                      }
+                    : { embeds: [questionEmbed] };
+
+            if (interaction.deferred) {
+                await interaction.followUp(payload);
+            } else if (!interaction.replied) {
+                await interaction.reply(payload);
+            } else {
+                await interaction.followUp(payload);
+            }
         } else {
-            await this.message.reply({
-                embeds: [questionEmbed],
-            });
+            if (shouldUseImage && questionImage) {
+                await this.message.reply({
+                    embeds: [questionEmbed],
+                    files: [questionImage],
+                });
+            } else {
+                await this.message.reply({
+                    embeds: [questionEmbed],
+                });
+            }
         }
     }
 
@@ -373,9 +412,23 @@ export class QuizSession extends EventEmitter {
                 text: "Trả lời bằng chữ cái tương ứng (A, B, C, ...) hoặc 'stop' để kết thúc",
             });
 
-        await this.message.reply({
-            embeds: [questionEmbed],
-        });
+        // Send question
+        if ((this.message as any).isInteraction) {
+            const interaction = this.message as any;
+            const payload = { embeds: [questionEmbed] };
+
+            if (interaction.deferred) {
+                await interaction.followUp(payload);
+            } else if (!interaction.replied) {
+                await interaction.reply(payload);
+            } else {
+                await interaction.followUp(payload);
+            }
+        } else {
+            await this.message.reply({
+                embeds: [questionEmbed],
+            });
+        }
     }
 
     /**
@@ -395,7 +448,7 @@ export class QuizSession extends EventEmitter {
             );
 
             const filter = (m: Message) =>
-                m.author.id === this.message.author.id;
+                m.author.id === this.getUserId();
 
             this.collector = channel.createMessageCollector(
                 {
@@ -503,7 +556,7 @@ export class QuizSession extends EventEmitter {
                 this.currentQuestion.questionType ===
                 QuizMode.Reading
             ) {
-                const userId = this.message.author.id;
+                const userId = this.getUserId();
                 reviewManagerInstance.addReviewItem(
                     userId,
                     this.currentQuestion.original
@@ -637,9 +690,25 @@ export class QuizSession extends EventEmitter {
                 text: `Chuỗi đúng: ${this.streakCount}`,
             });
 
-            await this.message.reply({
-                embeds: [correctEmbed],
-            });
+            if ((this.message as any).isInteraction) {
+                const interaction = this.message as any;
+                if (
+                    interaction.deferred ||
+                    interaction.replied
+                ) {
+                    await interaction.followUp({
+                        embeds: [correctEmbed],
+                    });
+                } else {
+                    await interaction.reply({
+                        embeds: [correctEmbed],
+                    });
+                }
+            } else {
+                await this.message.reply({
+                    embeds: [correctEmbed],
+                });
+            }
         } else {
             // Incorrect answer feedback
             const incorrectEmbed = new EmbedBuilder()
@@ -669,9 +738,25 @@ export class QuizSession extends EventEmitter {
                 text: `Đã học: ${stats.answeredQuestions}/${stats.totalQuestions}`,
             });
 
-            await this.message.reply({
-                embeds: [incorrectEmbed],
-            });
+            if ((this.message as any).isInteraction) {
+                const interaction = this.message as any;
+                if (
+                    interaction.deferred ||
+                    interaction.replied
+                ) {
+                    await interaction.followUp({
+                        embeds: [incorrectEmbed],
+                    });
+                } else {
+                    await interaction.reply({
+                        embeds: [incorrectEmbed],
+                    });
+                }
+            } else {
+                await this.message.reply({
+                    embeds: [incorrectEmbed],
+                });
+            }
         }
     }
 
@@ -756,7 +841,7 @@ export class QuizSession extends EventEmitter {
             this.currentQuestion.questionType ===
             QuizMode.Reading
         ) {
-            const userId = this.message.author.id;
+            const userId = this.getUserId();
             reviewManagerInstance.addReviewItem(
                 userId,
                 this.currentQuestion.original
@@ -811,9 +896,25 @@ export class QuizSession extends EventEmitter {
             }`,
         });
 
-        await this.message.reply({
-            embeds: [timeoutEmbed],
-        });
+        if ((this.message as any).isInteraction) {
+            const interaction = this.message as any;
+            if (
+                interaction.deferred ||
+                interaction.replied
+            ) {
+                await interaction.followUp({
+                    embeds: [timeoutEmbed],
+                });
+            } else {
+                await interaction.reply({
+                    embeds: [timeoutEmbed],
+                });
+            }
+        } else {
+            await this.message.reply({
+                embeds: [timeoutEmbed],
+            });
+        }
 
         // Add a delay before showing the next question (2 seconds)
         await new Promise((resolve) => {
@@ -889,9 +990,25 @@ export class QuizSession extends EventEmitter {
             })
             .setTimestamp();
 
-        await this.message.reply({
-            embeds: [summaryEmbed],
-        });
+        if ((this.message as any).isInteraction) {
+            const interaction = this.message as any;
+            if (
+                interaction.deferred ||
+                interaction.replied
+            ) {
+                await interaction.followUp({
+                    embeds: [summaryEmbed],
+                });
+            } else {
+                await interaction.reply({
+                    embeds: [summaryEmbed],
+                });
+            }
+        } else {
+            await this.message.reply({
+                embeds: [summaryEmbed],
+            });
+        }
 
         this.emit("end");
     }
@@ -1034,9 +1151,25 @@ export class QuizSession extends EventEmitter {
             .setDescription(message)
             .setTimestamp();
 
-        await this.message.reply({
-            embeds: [errorEmbed],
-        });
+        // Check if message is actually an interaction
+        if ((this.message as any).isInteraction) {
+            const interaction = this.message as any;
+            // Check if the interaction is deferred or replied
+            if (interaction.deferred) {
+                await interaction.editReply({
+                    embeds: [errorEmbed],
+                });
+            } else if (!interaction.replied) {
+                await interaction.reply({
+                    embeds: [errorEmbed],
+                });
+            }
+        } else {
+            // It's a regular message
+            await this.message.reply({
+                embeds: [errorEmbed],
+            });
+        }
     }
 
     /**
