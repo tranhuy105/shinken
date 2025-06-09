@@ -57,7 +57,7 @@ export class SpacedRepetitionStudyStrategy extends BaseStudyStrategy {
         initialEaseFactor: 2.5,
         minEaseFactor: 1.3,
         initialInterval: 1, // 1 day
-        correctAnswerMinimum: 2, // Number of correct answers required to consider "learned"
+        correctAnswerMinimum: 1, // Number of correct answers required to consider "learned"
     };
 
     constructor(questions: BaseQuestion[]) {
@@ -133,8 +133,19 @@ export class SpacedRepetitionStudyStrategy extends BaseStudyStrategy {
                         )} seconds`
                 );
             } else {
-                logger.debug(`No items to review`);
-                return null;
+                // Double-check if we truly have no questions left
+                if (this.items.length === 0) {
+                    logger.debug(
+                        `No items to review - empty item list`
+                    );
+                    return null;
+                }
+
+                // Safety check - we should have at least one item
+                logger.debug(
+                    `No items to review, but we have ${this.items.length} items. Something might be wrong.`
+                );
+                this.currentItem = this.items[0];
             }
         } else {
             // Pick a random item from those due for review
@@ -172,7 +183,8 @@ export class SpacedRepetitionStudyStrategy extends BaseStudyStrategy {
             logger.error(
                 "No current item to process answer for"
             );
-            return this.getNextQuestion();
+            // Don't call getNextQuestion() here - return null instead
+            return null;
         }
 
         const now = Date.now();
@@ -317,8 +329,8 @@ export class SpacedRepetitionStudyStrategy extends BaseStudyStrategy {
             );
         }
 
-        // Get the next question
-        return this.getNextQuestion();
+        // Don't get the next question here - let QuizSession handle it
+        return null;
     }
 
     /**

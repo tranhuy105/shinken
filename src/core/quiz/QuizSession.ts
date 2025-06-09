@@ -98,6 +98,10 @@ export class QuizSession extends EventEmitter {
                 return;
             }
 
+            logger.debug(
+                `[QuizSession:${this.sessionId}] Loaded ${items.length} vocabulary items`
+            );
+
             // Generate questions
             const quizGenerator = new QuizGenerator();
             this.questions =
@@ -114,19 +118,16 @@ export class QuizSession extends EventEmitter {
                 return;
             }
 
+            logger.debug(
+                `[QuizSession:${this.sessionId}] Generated ${this.questions.length} questions from ${items.length} vocabulary items`
+            );
+
             // Create appropriate study strategy
             this.studyStrategy =
                 StudyStrategyFactory.createStrategy(
                     this.options.studyMode,
                     this.questions
                 );
-
-            // Shuffle questions if not using spaced repetition
-            if (this.options.studyMode !== "spaced") {
-                this.questions = quizGenerator.shuffleArray(
-                    this.questions
-                );
-            }
 
             // Send welcome message
             const embed = this.createStartEmbed();
@@ -219,7 +220,11 @@ export class QuizSession extends EventEmitter {
         this.cleanupCurrentQuestion();
 
         logger.debug(
-            `[QuizSession:${this.sessionId}] Processing next question`
+            `[QuizSession:${
+                this.sessionId
+            }] Processing next question (${
+                this.correctCount + this.incorrectCount + 1
+            }/${this.questions.length})`
         );
 
         // Get next question from study strategy
@@ -229,7 +234,13 @@ export class QuizSession extends EventEmitter {
         // If no more questions, end the session
         if (!this.currentQuestion) {
             logger.debug(
-                `[QuizSession:${this.sessionId}] No more questions, ending session`
+                `[QuizSession:${
+                    this.sessionId
+                }] No more questions, ending session after ${
+                    this.correctCount + this.incorrectCount
+                } questions of ${
+                    this.questions.length
+                } total`
             );
             await this.endSession();
             return;
@@ -536,7 +547,8 @@ export class QuizSession extends EventEmitter {
             this.currentQuestion
         );
 
-        // Process the answer with the study strategy
+        // Process the answer with the study strategy - ignore the returned value
+        // We're not going to use the returned next question because it creates double-increments
         this.studyStrategy.processAnswer(
             this.currentQuestion,
             evaluation.isCorrect
@@ -830,7 +842,7 @@ export class QuizSession extends EventEmitter {
             return;
         }
 
-        // Process as incorrect answer for the study strategy
+        // Process as incorrect answer for the study strategy - ignore the returned next question
         this.studyStrategy.processAnswer(
             this.currentQuestion,
             false

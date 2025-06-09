@@ -1,0 +1,114 @@
+{
+  "decks": [
+    {
+      "name": "default",
+      "description": "Bộ từ tiếng Nhật cơ bản",
+      "filename": "default.csv"
+    },
+    {
+      "name": "n2_1",
+      "description": "mimikara n2 part 1",
+      "filename": "n2_1.csv"
+    },
+    {
+      "name": "n2_2",
+      "description": "mimikara n2 part 2",
+      "filename": "n2_2.csv"
+    },
+    {
+      "name": "n2_3",
+      "description": "mimikara n2 part 3",
+      "filename": "n2_3.csv"
+    },
+    {
+      "name": "n2_4",
+      "description": "mimikara n2 part 4",
+      "filename": "n2_4.csv"
+    },
+    {
+      "name": "n2_5",
+      "description": "mimikara n2 part 5",
+      "filename": "n2_5.csv"
+    },
+    {
+      "name": "n2_7",
+      "description": "mimikara n2 part 7",
+      "filename": "n2_7.csv"
+    },
+    {
+      "name": "n2_8",
+      "description": "mimikara n2 part 8",
+      "filename": "n2_8.csv"
+    },
+    {
+      "name": "n2_10",
+      "description": "mimikara n2 part 10",
+      "filename": "n2_10.csv"
+    },
+    {
+      "name": "n2_12",
+      "description": "mimikara n2 part 12",
+      "filename": "n2_12.csv"
+    },
+    {
+      "name": "n1_1",
+      "description": "mimikara n1 part 1",
+      "filename": "n1_1.csv"
+    },
+    {
+      "name": "n1_2",
+      "description": "mimikara n1 part 2",
+      "filename": "n1_2.csv"
+    },
+    {
+      "name": "n1_3",
+      "description": "mimikara n1 part 3",
+      "filename": "n1_3.csv"
+    },
+    {
+      "name": "n1_4",
+      "description": "mimikara n1 part 4",
+      "filename": "n1_4.csv"
+    },
+    {
+      "name": "n1_5",
+      "description": "mimikara n1 part 5",
+      "filename": "n1_5.csv"
+    },
+    {
+      "name": "n1_6",
+      "description": "mimikara n1 part 6",
+      "filename": "n1_6.csv"
+    },
+    {
+      "name": "n1_7",
+      "description": "mimikara n1 part 7",
+      "filename": "n1_7.csv"
+    },
+    {
+      "name": "n1_8",
+      "description": "mimikara n1 part 8",
+      "filename": "n1_8.csv"
+    },
+    {
+      "name": "n1_9",
+      "description": "mimikara n1 part 9",
+      "filename": "n1_9.csv"
+    },
+    {
+      "name": "n1_10",
+      "description": "mimikara n1 part 10",
+      "filename": "n1_10.csv"
+    },
+    {
+      "name": "n1_11",
+      "description": "mimikara n1 part 11",
+      "filename": "n1_11.csv"
+    },
+    {
+      "name": "n1_12",
+      "description": "mimikara n1 part 12",
+      "filename": "n1_12.csv"
+    }
+  ]
+}

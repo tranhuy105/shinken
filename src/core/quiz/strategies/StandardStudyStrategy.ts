@@ -10,8 +10,12 @@ const logger = getLogger("StandardStudyStrategy");
 export class StandardStudyStrategy extends BaseStudyStrategy {
     constructor(questions: BaseQuestion[]) {
         super(StudyMode.Standard, questions);
+
+        // Shuffle questions for better learning experience
+        this.questions = this.shuffleArray([...questions]);
+
         logger.debug(
-            `Initialized with ${questions.length} questions`
+            `Initialized with ${questions.length} questions and shuffled them`
         );
     }
 
@@ -21,18 +25,33 @@ export class StandardStudyStrategy extends BaseStudyStrategy {
     public getNextQuestion(): BaseQuestion | null {
         this.currentQuestionIndex++;
 
+        // Make sure we're not exceeding the actual questions array length
         if (
             this.currentQuestionIndex >=
             this.questions.length
         ) {
-            logger.debug(`No more questions available`);
+            logger.debug(
+                `No more questions available, max index reached: ${this.currentQuestionIndex}`
+            );
             return null;
         }
 
         const nextQuestion =
             this.questions[this.currentQuestionIndex];
+
+        if (!nextQuestion) {
+            logger.debug(
+                `No question found at index ${this.currentQuestionIndex}`
+            );
+            return null;
+        }
+
         logger.debug(
-            `Returning question at index ${this.currentQuestionIndex}`
+            `Returning question at index ${
+                this.currentQuestionIndex
+            } (${this.currentQuestionIndex + 1}/${
+                this.questions.length
+            })`
         );
         return nextQuestion;
     }
@@ -56,7 +75,8 @@ export class StandardStudyStrategy extends BaseStudyStrategy {
                 `correct total: ${this.correctCount}, incorrect total: ${this.incorrectCount}`
         );
 
-        // In standard mode, we just move to the next question
-        return this.getNextQuestion();
+        // DO NOT get next question here - we're calling getNextQuestion() twice!
+        // Let QuizSession handle getting the next question
+        return null;
     }
 }

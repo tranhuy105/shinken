@@ -38,6 +38,10 @@ export class MixedQuestionGenerator extends BaseQuestionGenerator<BaseQuestion> 
                 )
             );
         }
+
+        logger.debug(
+            `Initialized with ${this.generators.length} generators`
+        );
     }
 
     /**
@@ -54,7 +58,12 @@ export class MixedQuestionGenerator extends BaseQuestionGenerator<BaseQuestion> 
 
         // Generate questions from all generators
         let allQuestions: BaseQuestion[] = [];
+        const numItems = endIndex - startIndex + 1;
 
+        logger.debug(
+            `Total vocabulary items selected: ${numItems}`
+        );
+        
         for (const generator of this.generators) {
             logger.debug(
                 `Using generator for mode: ${generator.getMode()}`
@@ -64,6 +73,11 @@ export class MixedQuestionGenerator extends BaseQuestionGenerator<BaseQuestion> 
                 startIndex,
                 endIndex
             );
+            logger.debug(
+                `Generator ${generator.getMode()} created ${
+                    questions.length
+                } questions from ${numItems} items`
+            );
             allQuestions = [...allQuestions, ...questions];
         }
 
@@ -72,7 +86,7 @@ export class MixedQuestionGenerator extends BaseQuestionGenerator<BaseQuestion> 
             this.shuffleArray(allQuestions);
 
         logger.debug(
-            `Generated ${shuffledQuestions.length} mixed questions total`
+            `Generated ${shuffledQuestions.length} mixed questions total for ${numItems} vocabulary items (${this.generators.length} question types)`
         );
         return shuffledQuestions;
     }

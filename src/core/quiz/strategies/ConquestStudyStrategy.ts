@@ -15,14 +15,21 @@ export class ConquestStudyStrategy extends BaseStudyStrategy {
     private incorrectQuestions: BaseQuestion[];
     private reviewMode: boolean;
     private reviewCount: number;
+    private shouldSwitchToReview: boolean;
 
     constructor(questions: BaseQuestion[]) {
         super(StudyMode.Conquest, questions);
+
+        // Shuffle initial questions
+        this.questions = this.shuffleArray([...questions]);
+
         this.incorrectQuestions = [];
         this.reviewMode = false;
         this.reviewCount = 0;
+        this.shouldSwitchToReview = false;
+
         logger.debug(
-            `Initialized with ${questions.length} questions`
+            `Initialized with ${questions.length} questions and shuffled them`
         );
     }
 
@@ -30,10 +37,29 @@ export class ConquestStudyStrategy extends BaseStudyStrategy {
      * Get the next question to ask
      */
     public getNextQuestion(): BaseQuestion | null {
+        // Check if we need to switch to review mode
+        if (this.shouldSwitchToReview) {
+            this.reviewMode = true;
+            this.questions = this.shuffleArray([
+                ...this.incorrectQuestions,
+            ]);
+            this.incorrectQuestions = [];
+            this.currentQuestionIndex = -1; // Reset for the new review queue
+            this.reviewCount++;
+            this.shouldSwitchToReview = false;
+
+            logger.debug(
+                `Switching to review mode with ${this.questions.length} questions, ` +
+                    `review cycle: ${this.reviewCount}`
+            );
+        }
+
         // If we're in review mode and have no more incorrect questions, we're done
         if (
             this.reviewMode &&
-            this.incorrectQuestions.length === 0
+            this.incorrectQuestions.length === 0 &&
+            this.currentQuestionIndex >=
+                this.questions.length - 1
         ) {
             logger.debug(
                 `No more questions to review, all conquered`
@@ -48,18 +74,12 @@ export class ConquestStudyStrategy extends BaseStudyStrategy {
                 this.questions.length - 1
         ) {
             if (this.incorrectQuestions.length > 0) {
-                this.reviewMode = true;
-                this.questions = this.shuffleArray([
-                    ...this.incorrectQuestions,
-                ]);
-                this.incorrectQuestions = [];
-                this.currentQuestionIndex = -1; // Reset for the new review queue
-                this.reviewCount++;
-
+                // Set flag to switch to review mode on next call
+                this.shouldSwitchToReview = true;
                 logger.debug(
-                    `Switching to review mode with ${this.questions.length} questions, ` +
-                        `review cycle: ${this.reviewCount}`
+                    `Will switch to review mode on next question`
                 );
+                return null;
             } else {
                 logger.debug(
                     `No incorrect questions to review, all conquered on first try!`
@@ -75,19 +95,29 @@ export class ConquestStudyStrategy extends BaseStudyStrategy {
             this.questions.length
         ) {
             logger.debug(
-                `No more questions available in current cycle`
+                `No more questions available in current cycle (index: ${this.currentQuestionIndex}, length: ${this.questions.length})`
             );
             return null;
         }
 
         const nextQuestion =
             this.questions[this.currentQuestionIndex];
+
+        if (!nextQuestion) {
+            logger.debug(
+                `No question found at index ${this.currentQuestionIndex}`
+            );
+            return null;
+        }
+
         logger.debug(
             `Returning ${
                 this.reviewMode ? "review" : "initial"
             } question at index ${
                 this.currentQuestionIndex
-            }`
+            } (${this.currentQuestionIndex + 1}/${
+                this.questions.length
+            })`
         );
         return nextQuestion;
     }
@@ -116,8 +146,8 @@ export class ConquestStudyStrategy extends BaseStudyStrategy {
                 `questions to review: ${this.incorrectQuestions.length}`
         );
 
-        // Get the next question
-        return this.getNextQuestion();
+        // Do NOT call getNextQuestion() here - that's handled by QuizSession
+        return null;
     }
 
     /**

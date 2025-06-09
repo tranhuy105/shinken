@@ -341,3 +341,85 @@ async function handleListReview(
 
     await interaction.reply({ embeds: [embed] });
 }
+
+/**
+ * Main execute function for the review command
+ */
+export async function execute(
+    interaction: ChatInputCommandInteraction
+): Promise<void> {
+    const userId = interaction.user.id;
+    const subcommand = interaction.options.getSubcommand();
+
+    try {
+        switch (subcommand) {
+            case "list":
+                await handleListReview(interaction, userId);
+                break;
+
+            case "clear":
+                await handleClearReview(interaction, userId);
+                break;
+
+            case "remove":
+                const indicesString = interaction.options.getString("indices", true);
+                // Parse indices from string (e.g., "1,2,3" -> [1, 2, 3])
+                const indices = indicesString
+                    .split(",")
+                    .map(s => parseInt(s.trim()))
+                    .filter(n => !isNaN(n));
+                
+                if (indices.length === 0) {
+                    const embed = new EmbedBuilder()
+                        .setColor("#ff9900" as ColorResolvable)
+                        .setTitle("⚠️ Định dạng không hợp lệ")
+                        .setDescription(
+                            "Vui lòng nhập chỉ số hợp lệ (ví dụ: 1,2,3 hoặc 1)"
+                        )
+                        .setFooter({
+                            text: "Shinken Japanese Learning Bot",
+                        });
+                    
+                    await interaction.reply({ embeds: [embed] });
+                    return;
+                }
+                
+                await handleRemoveReviewItems(interaction, userId, indices);
+                break;
+
+            case "start":
+                await handleStartReview(interaction, userId);
+                break;
+
+            default:
+                const embed = new EmbedBuilder()
+                    .setColor("#ff0000" as ColorResolvable)
+                    .setTitle("❌ Lệnh không hợp lệ")
+                    .setDescription("Subcommand không được hỗ trợ.")
+                    .setFooter({
+                        text: "Shinken Japanese Learning Bot",
+                    });
+                
+                await interaction.reply({ embeds: [embed] });
+                break;
+        }
+    } catch (error) {
+        logger.error(`Error executing review command:`, error);
+        
+        const errorEmbed = new EmbedBuilder()
+            .setColor("#ff0000" as ColorResolvable)
+            .setTitle("❌ Lỗi")
+            .setDescription(
+                "Đã xảy ra lỗi khi thực hiện lệnh. Vui lòng thử lại sau."
+            )
+            .setFooter({
+                text: "Shinken Japanese Learning Bot",
+            });
+
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ embeds: [errorEmbed] });
+        } else {
+            await interaction.reply({ embeds: [errorEmbed] });
+        }
+    }
+}
